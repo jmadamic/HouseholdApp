@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- App display name shown under the home screen icon -->
+    <key>CFBundleDisplayName</key>
+    <string>ChoreSync</string>
+
+    <!-- Bundle identifier — must match your Apple Developer portal App ID -->
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+
+    <key>CFBundleVersion</key>
+    <string>1</string>
+
+    <key>CFBundlePackageType</key>
+    <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+
+    <!-- Supported orientations — portrait only on iPhone, all on iPad -->
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+
+    <!-- Required for NSPersistentCloudKitContainer sync -->
+    <key>NSUbiquitousContainers</key>
+    <dict>
+        <!-- Replace with your iCloud container identifier -->
+        <key>iCloud.com.choresync.app</key>
+        <dict>
+            <key>NSUbiquitousContainerIsDocumentScopePublic</key>
+            <true/>
+            <key>NSUbiquitousContainerName</key>
+            <string>ChoreSync</string>
+            <key>NSUbiquitousContainerSupportedFolderLevels</key>
+            <string>None</string>
+        </dict>
+    </dict>
+
+    <!-- Register for CloudKit share URL handling.
+         When Person B taps a CKShare invite link, iOS routes it to this app. -->
+    <key>CKSharingSupported</key>
+    <true/>
+
+    <!-- Blank launch screen (no storyboard needed for SwiftUI) -->
+    <key>UILaunchScreen</key>
+    <dict/>
+</dict>
+</plist>

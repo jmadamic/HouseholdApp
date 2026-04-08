@@ -1,0 +1,82 @@
+# project.yml — xcodegen configuration for ChoreSync
+# Run `xcodegen generate` from the project root to regenerate ChoreSync.xcodeproj.
+# Install xcodegen: brew install xcodegen
+
+name: ChoreSync
+
+options:
+  bundleIdPrefix: com.choresync
+  deploymentTarget:
+    iOS: "17.0"
+  defaultConfig: Debug
+  createIntermediateGroups: true
+  # Keeps Xcode from reordering your source files alphabetically.
+  groupSortPosition: none
+
+# ── Targets ────────────────────────────────────────────────────────────────────
+targets:
+  ChoreSync:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+
+    # ── Source files ───────────────────────────────────────────────────────────
+    # xcodegen auto-discovers all .swift files and resources under ChoreSync/.
+    sources:
+      - path: ChoreSync
+        # Exclude the entitlements file from compilation (it's a resource).
+        excludes:
+          - "**/*.entitlements"
+
+    # ── Resources ──────────────────────────────────────────────────────────────
+    resources:
+      - path: ChoreSync/Assets.xcassets
+      - path: ChoreSync/Info.plist
+
+    # ── Build settings ─────────────────────────────────────────────────────────
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.choresync.app
+        SWIFT_VERSION: "5.9"
+        # Target both iPhone and iPad.
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_FILE: ChoreSync/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ChoreSync/ChoreSync.entitlements
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        # Use automatic signing — fill in your team ID or use Xcode UI.
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+      configs:
+        Debug:
+          DEBUG_INFORMATION_FORMAT: dwarf
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+        Release:
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+
+    # ── Entitlements ───────────────────────────────────────────────────────────
+    entitlements:
+      path: ChoreSync/ChoreSync.entitlements
+
+    # ── Linked frameworks ──────────────────────────────────────────────────────
+    # SwiftUI, CoreData, and CloudKit are automatically linked by Xcode.
+    # No explicit framework entries needed.
+
+# ── Schemes ────────────────────────────────────────────────────────────────────
+schemes:
+  ChoreSync:
+    build:
+      targets:
+        ChoreSync: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
