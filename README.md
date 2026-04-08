@@ -11,10 +11,11 @@ A personal household chore app for two people, built with **SwiftUI + Core Data 
 |---|---|
 | **Categories** | Group chores into colour-coded, icon-tagged buckets (Kitchen, Bathroom, Outdoor, etc.) |
 | **Assignments** | Assign each chore to You, Your Partner, or Both |
-| **Due dates** | Pick a specific date, "This Week", "This Month", or no due date |
+| **Due dates** | Pick a specific date, any week, any month, or no due date — supports future weeks and months |
 | **Repeating chores** | Daily, weekly, bi-weekly, monthly, or yearly — chore resets automatically after completion |
 | **Completion tracking** | Per-person history stored for every completion |
 | **CloudKit Sharing** | Each person uses their own Apple ID. One person invites the other — no shared account needed |
+| **Shopping list** | Separate tab for groceries/household items — group by store or by type, with assignee support |
 | **Easy UI** | Swipe to complete or delete; tap to edit; colour-coded urgency sections |
 
 ---
@@ -43,7 +44,7 @@ ChoreSync/
     ├── Persistence/
     │   ├── PersistenceController.swift ← NSPersistentCloudKitContainer with private + shared stores
     │   ├── ShareController.swift       ← Manages CKShare invitations and participant status
-    │   └── ChoreSync.xcdatamodeld/    ← Core Data model (3 entities: Chore, Category, CompletionLog)
+    │   └── ChoreSync.xcdatamodeld/    ← Core Data model (4 entities: Chore, Category, CompletionLog, ShoppingItem)
     │
     ├── Models/
     │   ├── Enums.swift                 ← AssignedTo, DueDateType, RepeatInterval, ChoreSection
@@ -53,7 +54,7 @@ ChoreSync/
     │   └── Color+Hex.swift             ← Color ↔ "#RRGGBB" hex string conversion
     │
     └── Views/
-        ├── RootView.swift              ← TabView: Chores | Categories | Settings
+        ├── RootView.swift              ← TabView: Chores | Shopping | Categories | Settings
         ├── ChoreList/
         │   ├── ChoreListView.swift     ← Main list, sections, filter bar, swipe actions
         │   └── ChoreRowView.swift      ← Single row: checkbox, badges, due label, assignee icon
@@ -62,6 +63,10 @@ ChoreSync/
         ├── Categories/
         │   ├── CategoryListView.swift  ← Grid of category cards; drill-in to filtered chore list
         │   └── CategoryFormView.swift  ← Add/edit category: name, colour, icon
+        ├── Shopping/
+        │   ├── ShoppingListView.swift  ← Shopping list with group-by-store / group-by-type toggle
+        │   ├── ShoppingRowView.swift   ← Single item row: checkbox, quantity, type pill, store label
+        │   └── ShoppingFormView.swift  ← Add/edit sheet: name, quantity, store, type, assignee
         └── Settings/
             └── SettingsView.swift      ← Person names, household sharing, data summary
 ```
@@ -168,8 +173,8 @@ If you and your partner share a single Apple ID (common for family purchases), C
 | `title` | String | Short chore description |
 | `notes` | String? | Optional detail |
 | `assignedTo` | Int16 | 0=Me, 1=Partner, 2=Both |
-| `dueDateType` | Int16 | 0=Specific date, 1=This week, 2=This month, 3=None |
-| `dueDate` | Date? | Only set when dueDateType=0 |
+| `dueDateType` | Int16 | 0=Specific date, 1=Week, 2=Month, 3=None |
+| `dueDate` | Date? | Set for all non-None types; stores a date within the selected week/month |
 | `repeatInterval` | Int16 | 0=None, 1=Daily, 2=Weekly, 3=Biweekly, 4=Monthly, 5=Yearly |
 | `isCompleted` | Bool | Whether the chore is done |
 | `completedAt` | Date? | When it was completed |
@@ -189,6 +194,22 @@ If you and your partner share a single Apple ID (common for family purchases), C
 
 Each time a chore is marked complete, a `CompletionLog` record is inserted.  
 This powers per-person history and future stats/streaks features.
+
+### ShoppingItem
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `name` | String | Item name |
+| `quantity` | String? | Optional quantity (e.g. "2", "1 gal") |
+| `store` | String? | Store name (e.g. "Costco", "Target") |
+| `itemType` | String? | Item category (e.g. "Food", "Household") |
+| `assignedTo` | Int16 | 0=Me, 1=Partner, 2=Both |
+| `isPurchased` | Bool | Whether the item has been bought |
+| `purchasedAt` | Date? | When it was purchased |
+| `notes` | String? | Optional notes |
+| `sortOrder` | Int32 | Manual ordering |
+| `createdAt` | Date | Creation timestamp |
 
 ---
 
