@@ -5,8 +5,7 @@
 // Pass `item: nil` to create, or pass an existing ShoppingItem to edit.
 //
 // Fields: Name (required), Quantity, Item Type, Store, Assignee, Notes.
-// Item types and stores are user-extensible — tap "+" to add new ones,
-// long-press existing ones to delete them.
+// Item types and stores use dropdown pickers with add/delete options.
 
 import SwiftUI
 import CoreData
@@ -27,7 +26,7 @@ struct ShoppingFormView: View {
     @State private var assignedTo = AssignedTo.both
     @State private var notes      = ""
 
-    // ── "Add new" alert state ──────────────────────────────────────────────────
+    // ── Add new alert state ────────────────────────────────────────────────────
     @State private var showingNewStore    = false
     @State private var showingNewType     = false
     @State private var newStoreName       = ""
@@ -70,72 +69,58 @@ struct ShoppingFormView: View {
                     .pickerStyle(.segmented)
                 }
 
-                // ── Item Type (pill selector) ─────────────────────────────────
-                Section {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            // "None" pill
-                            pillButton(label: "None", icon: "xmark.circle", isSelected: itemType.isEmpty, color: .secondary) {
-                                itemType = ""
-                            }
-                            ForEach(appSettings.itemTypes, id: \.self) { type in
-                                pillButton(label: type, icon: "tag.fill", isSelected: itemType == type, color: .orange) {
-                                    itemType = type
-                                }
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        typeToDelete = type
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
-                            }
-                            // Add pill
-                            addPill {
-                                newTypeName = ""
-                                showingNewType = true
-                            }
+                // ── Item Type (dropdown with add/delete) ──────────────────────
+                Section("Type") {
+                    Picker("Item type", selection: $itemType) {
+                        Text("None").tag("")
+                        ForEach(appSettings.itemTypes, id: \.self) { type in
+                            Text(type).tag(type)
                         }
-                        .padding(.vertical, 4)
                     }
-                } header: {
-                    Text("Type")
-                } footer: {
-                    Text("Long press a type to delete it.")
+
+                    Button {
+                        newTypeName = ""
+                        showingNewType = true
+                    } label: {
+                        Label("Add New Type...", systemImage: "plus.circle")
+                            .font(.subheadline)
+                    }
+
+                    if !itemType.isEmpty {
+                        Button(role: .destructive) {
+                            typeToDelete = itemType
+                        } label: {
+                            Label("Delete \"\(itemType)\"", systemImage: "trash")
+                                .font(.subheadline)
+                        }
+                    }
                 }
 
-                // ── Store (pill selector) ─────────────────────────────────────
-                Section {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            // "None" pill
-                            pillButton(label: "None", icon: "xmark.circle", isSelected: store.isEmpty, color: .secondary) {
-                                store = ""
-                            }
-                            ForEach(appSettings.stores, id: \.self) { s in
-                                pillButton(label: s, icon: "storefront.fill", isSelected: store == s, color: .green) {
-                                    store = s
-                                }
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        storeToDelete = s
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
-                            }
-                            // Add pill
-                            addPill {
-                                newStoreName = ""
-                                showingNewStore = true
-                            }
+                // ── Store (dropdown with add/delete) ──────────────────────────
+                Section("Store") {
+                    Picker("Store", selection: $store) {
+                        Text("None").tag("")
+                        ForEach(appSettings.stores, id: \.self) { s in
+                            Text(s).tag(s)
                         }
-                        .padding(.vertical, 4)
                     }
-                } header: {
-                    Text("Store")
-                } footer: {
-                    Text("Long press a store to delete it.")
+
+                    Button {
+                        newStoreName = ""
+                        showingNewStore = true
+                    } label: {
+                        Label("Add New Store...", systemImage: "plus.circle")
+                            .font(.subheadline)
+                    }
+
+                    if !store.isEmpty {
+                        Button(role: .destructive) {
+                            storeToDelete = store
+                        } label: {
+                            Label("Delete \"\(store)\"", systemImage: "trash")
+                                .font(.subheadline)
+                        }
+                    }
                 }
 
                 // ── Notes ──────────────────────────────────────────────────────
@@ -228,40 +213,6 @@ struct ShoppingFormView: View {
                 Text("Remove \"\(typeToDelete ?? "")\" from the type list?")
             }
         }
-    }
-
-    // ── Pill button helper ─────────────────────────────────────────────────────
-
-    private func pillButton(label: String, icon: String, isSelected: Bool, color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(label, systemImage: icon)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(isSelected ? .white : color)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    isSelected ? color : color.opacity(0.12),
-                    in: Capsule()
-                )
-        }
-        .buttonStyle(.plain)
-        .animation(.easeInOut(duration: 0.15), value: isSelected)
-    }
-
-    /// "+" pill at the end of a row to add a new item.
-    private func addPill(action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label("Add", systemImage: "plus")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(Color.accentColor)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    Color.accentColor.opacity(0.12),
-                    in: Capsule()
-                )
-        }
-        .buttonStyle(.plain)
     }
 
     // ── Actions ────────────────────────────────────────────────────────────────

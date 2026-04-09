@@ -6,8 +6,8 @@
 //
 // Fields:
 //   • Title (required)
-//   • Category picker with inline add/edit/delete
-//   • Assignee picker (Me / Partner / Both)
+//   • Category dropdown with add/edit/delete
+//   • Assignee picker (Both / Me / Partner)
 //   • Due date type + date picker
 //   • Repeat interval
 //   • Notes (optional)
@@ -78,36 +78,41 @@ struct ChoreFormView: View {
                     .pickerStyle(.segmented)
                 }
 
-                // ── Category (with inline management) ─────────────────────────
-                Section {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            // "None" pill
-                            categoryPill(nil)
-                            ForEach(categories) { cat in
-                                categoryPill(cat)
-                                    .contextMenu {
-                                        Button {
-                                            categoryToEdit = cat
-                                        } label: {
-                                            Label("Edit", systemImage: "pencil")
-                                        }
-                                        Button(role: .destructive) {
-                                            categoryToDelete = cat
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                    }
-                            }
-                            // "Add" pill — creates a new category inline
-                            addCategoryPill
+                // ── Category (dropdown with add/delete) ───────────────────────
+                Section("Category") {
+                    Picker("Category", selection: $selectedCat) {
+                        Text("None").tag(nil as Category?)
+                        ForEach(categories) { cat in
+                            Label(cat.nameSafe, systemImage: cat.iconNameSafe)
+                                .tag(cat as Category?)
                         }
-                        .padding(.vertical, 4)
                     }
-                } header: {
-                    Text("Category")
-                } footer: {
-                    Text("Long press a category to edit or delete it.")
+
+                    // Add new category
+                    Button {
+                        showingAddCategory = true
+                    } label: {
+                        Label("Add New Category...", systemImage: "plus.circle")
+                            .font(.subheadline)
+                    }
+
+                    // Delete selected category (only shown when one is selected)
+                    if let cat = selectedCat {
+                        Button(role: .destructive) {
+                            categoryToDelete = cat
+                        } label: {
+                            Label("Delete \"\(cat.nameSafe)\"", systemImage: "trash")
+                                .font(.subheadline)
+                        }
+
+                        // Edit selected category
+                        Button {
+                            categoryToEdit = cat
+                        } label: {
+                            Label("Edit \"\(cat.nameSafe)\"", systemImage: "pencil")
+                                .font(.subheadline)
+                        }
+                    }
                 }
 
                 // ── When ───────────────────────────────────────────────────────
@@ -130,7 +135,6 @@ struct ChoreFormView: View {
                             selection: $dueDate,
                             displayedComponents: .date
                         )
-                        // Show which week is selected.
                         if let weekStart = Calendar.current.dateInterval(of: .weekOfYear, for: dueDate)?.start,
                            let weekEnd = Calendar.current.dateInterval(of: .weekOfYear, for: dueDate)?.end {
                             let endDisplay = Calendar.current.date(byAdding: .day, value: -1, to: weekEnd) ?? weekEnd
@@ -177,7 +181,6 @@ struct ChoreFormView: View {
                         .fontWeight(.semibold)
                 }
             }
-            // Pre-fill when editing an existing chore.
             .onAppear(perform: populateIfEditing)
             // Sheet: add new category
             .sheet(isPresented: $showingAddCategory) {
@@ -197,7 +200,6 @@ struct ChoreFormView: View {
             ) {
                 Button("Delete", role: .destructive) {
                     if let cat = categoryToDelete {
-                        // If deleting the currently selected category, reset to none.
                         if selectedCat?.objectID == cat.objectID {
                             selectedCat = nil
                         }
@@ -213,49 +215,6 @@ struct ChoreFormView: View {
                 Text("This will remove \"\(categoryToDelete?.nameSafe ?? "")\" from all chores. Chores won't be deleted — they'll become uncategorized.")
             }
         }
-    }
-
-    // ── Category pill helper ───────────────────────────────────────────────────
-
-    private func categoryPill(_ cat: Category?) -> some View {
-        let isSelected = selectedCat?.objectID == cat?.objectID
-        let color: Color = cat?.color ?? .secondary
-        let label = cat?.nameSafe ?? "None"
-        let icon  = cat?.iconNameSafe ?? "xmark.circle"
-
-        return Button {
-            selectedCat = cat
-        } label: {
-            Label(label, systemImage: icon)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(isSelected ? .white : color)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    isSelected ? color : color.opacity(0.12),
-                    in: Capsule()
-                )
-        }
-        .buttonStyle(.plain)
-        .animation(.easeInOut(duration: 0.15), value: isSelected)
-    }
-
-    /// "+" pill at the end of the category row to add a new category.
-    private var addCategoryPill: some View {
-        Button {
-            showingAddCategory = true
-        } label: {
-            Label("Add", systemImage: "plus")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(Color.accentColor)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    Color.accentColor.opacity(0.12),
-                    in: Capsule()
-                )
-        }
-        .buttonStyle(.plain)
     }
 
     // ── Actions ────────────────────────────────────────────────────────────────
@@ -285,7 +244,7 @@ struct ChoreFormView: View {
         target.repeatIntervalEnum = repeatInt
         target.category       = selectedCat
         target.createdAt      = target.createdAt ?? Date()
-        target.sortOrder      = target.sortOrder  // preserve existing order
+        target.sortOrder      = target.sortOrder
 
         try? ctx.save()
         dismiss()
