@@ -27,7 +27,7 @@ struct ChoreFormView: View {
     // ── Form state ─────────────────────────────────────────────────────────────
     @State private var title        = ""
     @State private var notes        = ""
-    @State private var assignedTo   = AssignedTo.me
+    @State private var assignedTo   = AssignedTo.both
     @State private var dueDateType  = DueDateType.none
     @State private var dueDate      = Date()
     @State private var repeatInt    = RepeatInterval.none

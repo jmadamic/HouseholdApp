@@ -266,7 +266,6 @@ struct PersistenceController {
             ("Bathroom",  "shower",          "#4ECDC4"),
             ("Outdoor",   "leaf.fill",       "#45B7D1"),
             ("Laundry",   "washer.fill",     "#96CEB4"),
-            ("Groceries", "cart.fill",       "#FFEAA7"),
             ("General",   "house.fill",      "#DDA0DD"),
         ]
         return defaults.enumerated().map { index, item in

@@ -24,7 +24,7 @@ struct ShoppingFormView: View {
     @State private var quantity   = ""
     @State private var store      = ""
     @State private var itemType   = ""
-    @State private var assignedTo = AssignedTo.me
+    @State private var assignedTo = AssignedTo.both
     @State private var notes      = ""
 
     // ── "Add new" alert state ──────────────────────────────────────────────────
