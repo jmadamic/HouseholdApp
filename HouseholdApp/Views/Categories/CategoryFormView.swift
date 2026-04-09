@@ -3,6 +3,7 @@
 //
 // Sheet for creating or editing a category.
 // User picks a name, a color, and an SF Symbol icon.
+// When editing, a delete option appears at the bottom.
 
 import SwiftUI
 
@@ -12,17 +13,20 @@ struct CategoryFormView: View {
     @Environment(\.dismiss) private var dismiss
 
     let category: Category?
+    /// Callback when user deletes the category from this screen.
+    var onDelete: (() -> Void)? = nil
 
     // ── Form state ─────────────────────────────────────────────────────────────
     @State private var name     = ""
     @State private var color    = Color.blue
     @State private var iconName = "star.fill"
+    @State private var showingDeleteAlert = false
 
     private var isValid: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty }
+    private var isEditing: Bool { category != nil }
 
     // ── Available icons ────────────────────────────────────────────────────────
-    // A curated set of household-relevant SF Symbols.
-    private let iconOptions: [String] = [
+    static let iconOptions: [String] = [
         "fork.knife",   "cup.and.saucer.fill", "trash.fill",       "washer.fill",
         "shower",       "bed.double.fill",      "sofa.fill",        "chair.fill",
         "cart.fill",    "leaf.fill",            "figure.walk",      "car.fill",
@@ -86,7 +90,7 @@ struct CategoryFormView: View {
                 // ── Icon ───────────────────────────────────────────────────────
                 Section("Icon") {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 10) {
-                        ForEach(iconOptions, id: \.self) { icon in
+                        ForEach(Self.iconOptions, id: \.self) { icon in
                             Image(systemName: icon)
                                 .font(.title2)
                                 .foregroundStyle(iconName == icon ? .white : color)
@@ -100,8 +104,25 @@ struct CategoryFormView: View {
                     }
                     .padding(.vertical, 4)
                 }
+
+                // ── Delete (only when editing) ─────────────────────────────────
+                if isEditing {
+                    Section {
+                        Button(role: .destructive) {
+                            showingDeleteAlert = true
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Label("Delete Category", systemImage: "trash")
+                                Spacer()
+                            }
+                        }
+                    } footer: {
+                        Text("Chores in this category will become uncategorized.")
+                    }
+                }
             }
-            .navigationTitle(category == nil ? "New Category" : "Edit Category")
+            .navigationTitle(isEditing ? "Edit Category" : "New Category")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -114,6 +135,19 @@ struct CategoryFormView: View {
                 }
             }
             .onAppear(perform: populateIfEditing)
+            .alert("Delete Category?", isPresented: $showingDeleteAlert) {
+                Button("Delete", role: .destructive) {
+                    if let category {
+                        ctx.delete(category)
+                        try? ctx.save()
+                    }
+                    onDelete?()
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will remove \"\(category?.nameSafe ?? "")\" from all chores. Chores won't be deleted — they'll become uncategorized.")
+            }
         }
     }
 

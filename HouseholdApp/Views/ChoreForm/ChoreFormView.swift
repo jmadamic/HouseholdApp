@@ -36,7 +36,6 @@ struct ChoreFormView: View {
     // ── Category management state ──────────────────────────────────────────────
     @State private var showingAddCategory = false
     @State private var categoryToEdit: Category? = nil
-    @State private var categoryToDelete: Category? = nil
 
     // ── Validation ─────────────────────────────────────────────────────────────
     private var isValid: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -78,7 +77,7 @@ struct ChoreFormView: View {
                     .pickerStyle(.segmented)
                 }
 
-                // ── Category (dropdown with add/delete) ───────────────────────
+                // ── Category (dropdown with edit) ─────────────────────────────
                 Section("Category") {
                     Picker("Category", selection: $selectedCat) {
                         Text("None").tag(nil as Category?)
@@ -96,16 +95,8 @@ struct ChoreFormView: View {
                             .font(.subheadline)
                     }
 
-                    // Delete selected category (only shown when one is selected)
+                    // Edit selected category (delete is inside the edit screen)
                     if let cat = selectedCat {
-                        Button(role: .destructive) {
-                            categoryToDelete = cat
-                        } label: {
-                            Label("Delete \"\(cat.nameSafe)\"", systemImage: "trash")
-                                .font(.subheadline)
-                        }
-
-                        // Edit selected category
                         Button {
                             categoryToEdit = cat
                         } label: {
@@ -186,33 +177,12 @@ struct ChoreFormView: View {
             .sheet(isPresented: $showingAddCategory) {
                 CategoryFormView(category: nil)
             }
-            // Sheet: edit existing category
+            // Sheet: edit existing category (delete is inside the edit screen)
             .sheet(item: $categoryToEdit) { cat in
-                CategoryFormView(category: cat)
-            }
-            // Confirmation: delete category
-            .alert(
-                "Delete Category?",
-                isPresented: Binding(
-                    get: { categoryToDelete != nil },
-                    set: { if !$0 { categoryToDelete = nil } }
-                )
-            ) {
-                Button("Delete", role: .destructive) {
-                    if let cat = categoryToDelete {
-                        if selectedCat?.objectID == cat.objectID {
-                            selectedCat = nil
-                        }
-                        ctx.delete(cat)
-                        try? ctx.save()
-                    }
-                    categoryToDelete = nil
+                CategoryFormView(category: cat) {
+                    // onDelete callback — reset selection if the edited category was deleted
+                    selectedCat = nil
                 }
-                Button("Cancel", role: .cancel) {
-                    categoryToDelete = nil
-                }
-            } message: {
-                Text("This will remove \"\(categoryToDelete?.nameSafe ?? "")\" from all chores. Chores won't be deleted — they'll become uncategorized.")
             }
         }
     }

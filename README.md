@@ -15,7 +15,7 @@ A personal household chore app for two people, built with **SwiftUI + Core Data 
 | **Repeating chores** | Daily, weekly, bi-weekly, monthly, or yearly — chore resets automatically after completion |
 | **Completion tracking** | Per-person history stored for every completion |
 | **CloudKit Sharing** | Each person uses their own Apple ID. One person invites the other — no shared account needed |
-| **Shopping list** | Separate tab for groceries/household items — group by store or by type, with assignee support |
+| **Shopping list** | Separate tab for groceries/household items — group by store or by type, with assignee support. Stores and item types are fully editable with custom icons |
 | **Easy UI** | Swipe to complete or delete; tap to edit; colour-coded urgency sections |
 
 ---
@@ -39,7 +39,7 @@ HouseholdApp/
 └── HouseholdApp/
     ├── App/
     │   ├── HouseholdAppApp.swift          ← @main entry point; handles CloudKit share URLs
-    │   └── AppSettings.swift           ← Observable wrapper for UserDefaults (person names)
+    │   └── AppSettings.swift           ← Observable wrapper for UserDefaults (names, stores, item types, icons)
     │
     ├── Persistence/
     │   ├── PersistenceController.swift ← NSPersistentCloudKitContainer with private + shared stores
@@ -59,14 +59,16 @@ HouseholdApp/
         │   ├── ChoreListView.swift     ← Main list, sections, filter bar, swipe actions
         │   └── ChoreRowView.swift      ← Single row: checkbox, badges, due label, assignee icon
         ├── ChoreForm/
-        │   └── ChoreFormView.swift     ← Add/edit sheet with inline category management (add/edit/delete)
+        │   └── ChoreFormView.swift     ← Add/edit sheet with inline category management (add/edit)
         ├── Categories/
         │   ├── CategoryListView.swift  ← Category grid (used internally by form)
-        │   └── CategoryFormView.swift  ← Add/edit category: name, colour, icon
+        │   └── CategoryFormView.swift  ← Add/edit/delete category: name, colour, icon
         ├── Shopping/
         │   ├── ShoppingListView.swift  ← Shopping list with group-by-store / group-by-type toggle
         │   ├── ShoppingRowView.swift   ← Single item row: checkbox, quantity, type pill, store label
-        │   └── ShoppingFormView.swift  ← Add/edit sheet with inline store/type management (add/delete)
+        │   ├── ShoppingFormView.swift  ← Add/edit sheet with inline store/type management (add/edit)
+        │   ├── StoreFormView.swift     ← Add/edit/delete store: name, icon picker
+        │   └── ItemTypeFormView.swift  ← Add/edit/delete item type: name, icon picker
         └── Settings/
             └── SettingsView.swift      ← Person names, household sharing, data summary
 ```
@@ -255,7 +257,7 @@ Note: Person names are stored locally on each device (not synced via CloudKit). 
 - **No push notifications** — due-date reminders could be added using `UNUserNotificationCenter`.
 - **No widget** — a home screen widget showing today's chores via `WidgetKit`.
 - **No drag-to-reorder** — the `sortOrder` attribute is in place; a `List` with `.onMove` would enable it.
-- **No app icon** — add a 1024x1024 PNG to `Assets.xcassets/AppIcon.appiconset/` and update `Contents.json`.
+- **Custom app icon** — maple leaf house logo included.
 - **No dashboard/scoreboard** — `CompletionLog` tracks per-person history; a stats view could show streaks and completion counts.
 
 ---
