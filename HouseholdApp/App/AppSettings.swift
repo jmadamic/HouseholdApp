@@ -29,7 +29,7 @@ class AppSettings: ObservableObject {
     // ── Shopping: user-addable stores ──────────────────────────────────────────
     // Stored as a comma-separated string in UserDefaults. Merged with defaults.
 
-    static let defaultStores = ["Costco", "Target", "Home Depot", "Walmart", "Amazon"]
+    static let defaultStores = ["Costco", "Zehrs", "Home Depot", "Walmart", "Amazon"]
 
     @AppStorage("customStores")
     private var customStoresRaw: String = "" {

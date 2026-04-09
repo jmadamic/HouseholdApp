@@ -10,12 +10,15 @@ import SwiftUI
 // ── AssignedTo ────────────────────────────────────────────────────────────────
 // Who is responsible for completing a chore.
 
-enum AssignedTo: Int16, CaseIterable, Identifiable {
+enum AssignedTo: Int16, Identifiable, CaseIterable {
     case me      = 0
     case partner = 1
     case both    = 2
 
     var id: Int16 { rawValue }
+
+    /// Display order: Both first, then Me, then Partner.
+    static var allCases: [AssignedTo] { [.both, .me, .partner] }
 
     /// Short label shown in pickers and list rows.
     var label: String {
