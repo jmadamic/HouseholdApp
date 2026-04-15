@@ -81,7 +81,7 @@ struct StoreFormView: View {
                         } label: {
                             HStack {
                                 Spacer()
-                                Label("Delete Store", systemImage: "trash")
+                                Text("Delete")
                                 Spacer()
                             }
                         }

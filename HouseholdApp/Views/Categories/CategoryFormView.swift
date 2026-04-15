@@ -113,7 +113,7 @@ struct CategoryFormView: View {
                         } label: {
                             HStack {
                                 Spacer()
-                                Label("Delete Category", systemImage: "trash")
+                                Text("Delete")
                                 Spacer()
                             }
                         }

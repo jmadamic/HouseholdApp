@@ -81,7 +81,7 @@ struct ItemTypeFormView: View {
                         } label: {
                             HStack {
                                 Spacer()
-                                Label("Delete Type", systemImage: "trash")
+                                Text("Delete")
                                 Spacer()
                             }
                         }
