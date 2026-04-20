@@ -20,8 +20,8 @@ struct HouseholdAppApp: App {
         WindowGroup {
             Group {
                 if !auth.isSignedIn {
-                    SignInView()
-                        .environmentObject(auth)
+                    // Anonymous sign-in is in-flight — show a brief spinner.
+                    ProgressView()
                 } else if householdCtrl.household == nil {
                     // Still setting up (auto-creating household or loading from Firestore).
                     // Show a spinner; once the household doc arrives we switch to RootView.

@@ -79,11 +79,22 @@ struct SettingsView: View {
 
                 // ── Account ────────────────────────────────────────────────────
                 Section("Account") {
-                    if let email = auth.email {
-                        LabeledContent("Signed in as", value: email)
-                    }
-                    Button(role: .destructive) { auth.signOut() } label: {
-                        Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                    if auth.isAnonymous {
+                        Button {
+                            Task {
+                                guard let root = SignInView.topViewController() else { return }
+                                await auth.signInWithGoogle(presenting: root)
+                            }
+                        } label: {
+                            Label("Sign in with Google to sync", systemImage: "person.crop.circle.badge.checkmark")
+                        }
+                    } else {
+                        if let email = auth.email {
+                            LabeledContent("Signed in as", value: email)
+                        }
+                        Button(role: .destructive) { auth.signOut() } label: {
+                            Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        }
                     }
                 }
 
