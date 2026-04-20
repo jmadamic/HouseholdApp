@@ -1,7 +1,7 @@
 # HouseholdApp
 
-A personal household chore app for two people, built with **SwiftUI + Core Data + CloudKit**.  
-100% free — no backend, no subscription. Data syncs through iCloud using **CloudKit Sharing**, so each person keeps their own Apple ID.
+A household chore app for **any number of people**, built with **SwiftUI + Core Data + CloudKit**.  
+100% free — no backend, no subscription. Data syncs through iCloud using **CloudKit Sharing** (up to 100 participants), so each person keeps their own Apple ID.
 
 ---
 
@@ -10,11 +10,11 @@ A personal household chore app for two people, built with **SwiftUI + Core Data 
 | Feature | Details |
 |---|---|
 | **Categories** | Group chores into colour-coded, icon-tagged buckets (Kitchen, Bathroom, Outdoor, etc.) |
-| **Assignments** | Assign each chore to You, Your Partner, or Both |
+| **Assignments** | Assign each chore to any household member or Everyone — supports 2+ people |
 | **Due dates** | Pick a specific date, any week, any month, or no due date — supports future weeks and months |
 | **Repeating chores** | Daily, weekly, bi-weekly, monthly, or yearly — chore resets automatically after completion |
 | **Completion tracking** | Per-person history stored for every completion |
-| **CloudKit Sharing** | Each person uses their own Apple ID. One person invites the other — no shared account needed |
+| **CloudKit Sharing** | Each person uses their own Apple ID. One person invites the others (up to 100) — no shared account needed |
 | **Shopping list** | Separate tab for groceries/household items — group by store or by type, with assignee support. Stores and item types are fully editable with custom icons |
 | **Easy UI** | Swipe to complete or delete; tap to edit; colour-coded urgency sections |
 

@@ -29,6 +29,7 @@ struct HouseholdAppApp: App {
                 .environment(\.managedObjectContext, persistence.container.viewContext)
                 .environmentObject(appSettings)
                 .environmentObject(shareController)
+                .onAppear { appSettings.migrateFromOldFormat() }
 
                 // ── Handle incoming share invitations ──────────────────────────
                 // When Person B taps the invite link, iOS opens the app with

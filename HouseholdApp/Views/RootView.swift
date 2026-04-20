@@ -45,5 +45,4 @@ struct RootView: View {
     RootView()
         .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
         .environmentObject(AppSettings())
-        .environmentObject(ShareController(persistence: .preview))
 }

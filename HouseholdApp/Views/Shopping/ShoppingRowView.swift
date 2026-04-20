@@ -2,9 +2,6 @@
 // HouseholdApp
 //
 // A single row in the shopping list.
-// Left: circular checkbox (tap to mark purchased).
-// Center: item name, quantity badge, type pill badge.
-// Right: store label + assignee icon.
 
 import SwiftUI
 
@@ -49,7 +46,6 @@ struct ShoppingRowView: View {
                         .strikethrough(item.isPurchased, color: .secondary)
                         .foregroundStyle(item.isPurchased ? .secondary : .primary)
 
-                    // Quantity badge
                     if let qty = item.quantitySafe {
                         Text(qty)
                             .font(.caption2.weight(.medium))
@@ -60,15 +56,14 @@ struct ShoppingRowView: View {
                     }
                 }
 
-                // Type pill badge
                 HStack(spacing: 6) {
                     if let itemType = item.itemType, !itemType.isEmpty {
-                        Label(itemType, systemImage: iconForType(itemType))
+                        Label(itemType, systemImage: appSettings.iconForItemType(itemType))
                             .font(.caption2.weight(.medium))
-                            .foregroundStyle(colorForType(itemType))
+                            .foregroundStyle(.secondary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(colorForType(itemType).opacity(0.12), in: Capsule())
+                            .background(Color.secondary.opacity(0.12), in: Capsule())
                     }
                 }
             }
@@ -82,39 +77,13 @@ struct ShoppingRowView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                let assignee = item.assignedToEnum
-                Image(systemName: appSettings.icon(for: assignee))
+                let a = item.assignment
+                Image(systemName: appSettings.assigneeIcon(for: a))
                     .font(.caption)
-                    .foregroundStyle(assignee.color)
+                    .foregroundStyle(a.color)
             }
         }
         .padding(.vertical, 2)
         .opacity(item.isPurchased ? 0.6 : 1.0)
-    }
-
-    // ── Type → icon mapping ────────────────────────────────────────────────────
-
-    private func iconForType(_ type: String) -> String {
-        switch type.lowercased() {
-        case "food":          return "fork.knife"
-        case "furniture":     return "sofa.fill"
-        case "maintenance":   return "wrench.fill"
-        case "household":     return "house.fill"
-        case "personal care": return "heart.fill"
-        default:              return "tag.fill"
-        }
-    }
-
-    // ── Type → color mapping ───────────────────────────────────────────────────
-
-    private func colorForType(_ type: String) -> Color {
-        switch type.lowercased() {
-        case "food":          return .orange
-        case "furniture":     return .brown
-        case "maintenance":   return .blue
-        case "household":     return .purple
-        case "personal care": return .pink
-        default:              return .gray
-        }
     }
 }

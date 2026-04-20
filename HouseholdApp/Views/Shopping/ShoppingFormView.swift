@@ -30,7 +30,7 @@ struct ShoppingFormView: View {
     @State private var quantity   = ""
     @State private var store      = ""
     @State private var itemType   = ""
-    @State private var assignedTo = AssignedTo.both
+    @State private var assignment = MemberAssignment.everyone
     @State private var notes      = ""
 
     // ── Store management state ────────────────────────────────────────────────
@@ -60,15 +60,13 @@ struct ShoppingFormView: View {
 
                 // ── Who ────────────────────────────────────────────────────────
                 Section("Who's buying") {
-                    Picker("Assign to", selection: $assignedTo) {
-                        ForEach(AssignedTo.allCases) { person in
+                    Picker("Assign to", selection: $assignment) {
+                        ForEach(appSettings.allAssignments) { a in
                             Label(
-                                person == .me      ? appSettings.myName :
-                                person == .partner ? appSettings.partnerName :
-                                "Both",
-                                systemImage: appSettings.icon(for: person)
+                                appSettings.assigneeName(for: a),
+                                systemImage: appSettings.assigneeIcon(for: a)
                             )
-                            .tag(person)
+                            .tag(a)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -196,7 +194,7 @@ struct ShoppingFormView: View {
         quantity   = item.quantity ?? ""
         store      = item.store ?? ""
         itemType   = item.itemType ?? ""
-        assignedTo = item.assignedToEnum
+        assignment = item.assignment
         notes      = item.notes ?? ""
     }
 
@@ -208,7 +206,7 @@ struct ShoppingFormView: View {
         target.quantity       = quantity.isEmpty ? nil : quantity
         target.store          = store.isEmpty ? nil : store
         target.itemType       = itemType.isEmpty ? nil : itemType
-        target.assignedToEnum = assignedTo
+        target.assignment     = assignment
         target.notes          = notes.isEmpty ? nil : notes
         target.createdAt      = target.createdAt ?? Date()
 

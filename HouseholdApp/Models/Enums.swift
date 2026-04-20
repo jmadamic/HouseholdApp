@@ -4,49 +4,11 @@
 // Typed Swift enums that wrap the Integer 16 values stored in Core Data.
 // Using raw Int16 values in Core Data (required for CloudKit compatibility)
 // while exposing clean Swift enums everywhere else in the codebase.
+//
+// Note: AssignedTo has been replaced by MemberAssignment (see MemberAssignment.swift)
+// to support N household members instead of a fixed Me/Partner/Both.
 
 import SwiftUI
-
-// ── AssignedTo ────────────────────────────────────────────────────────────────
-// Who is responsible for completing a chore.
-
-enum AssignedTo: Int16, Identifiable, CaseIterable {
-    case me      = 0
-    case partner = 1
-    case both    = 2
-
-    var id: Int16 { rawValue }
-
-    /// Display order: Both first, then Me, then Partner.
-    static var allCases: [AssignedTo] { [.both, .me, .partner] }
-
-    /// Short label shown in pickers and list rows.
-    var label: String {
-        switch self {
-        case .me:      return "Me"
-        case .partner: return "Partner"
-        case .both:    return "Both"
-        }
-    }
-
-    /// SF Symbol representing this assignment.
-    var systemImage: String {
-        switch self {
-        case .me:      return "person.fill"
-        case .partner: return "person.fill"
-        case .both:    return "person.2.fill"
-        }
-    }
-
-    /// Tint color used for the assignee badge.
-    var color: Color {
-        switch self {
-        case .me:      return .blue
-        case .partner: return .pink
-        case .both:    return .purple
-        }
-    }
-}
 
 // ── DueDateType ───────────────────────────────────────────────────────────────
 // How the due date for a chore is expressed.

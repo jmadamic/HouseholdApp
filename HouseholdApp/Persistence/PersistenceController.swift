@@ -134,7 +134,33 @@ struct PersistenceController {
                 PersistenceController.seedDefaultCategories(in: ctx)
                 try? ctx.save()
             }
+
+            // ── One-time migration: assignedTo 2 (old "Both") → -1 (Everyone) ──
+            Self.migrateAssignedToBothToEveryone(in: ctx)
         }
+    }
+
+    /// Migrates old assignedTo=2 ("Both") to -1 ("Everyone") for multi-member support.
+    private static func migrateAssignedToBothToEveryone(in context: NSManagedObjectContext) {
+        let migrationKey = "migratedAssignedToV2"
+        guard !UserDefaults.standard.bool(forKey: migrationKey) else { return }
+
+        // Chores
+        let choreRequest: NSFetchRequest<Chore> = Chore.fetchRequest()
+        choreRequest.predicate = NSPredicate(format: "assignedTo == 2")
+        if let chores = try? context.fetch(choreRequest) {
+            for chore in chores { chore.assignedTo = MemberAssignment.everyoneRaw }
+        }
+
+        // Shopping items
+        let itemRequest: NSFetchRequest<ShoppingItem> = ShoppingItem.fetchRequest()
+        itemRequest.predicate = NSPredicate(format: "assignedTo == 2")
+        if let items = try? context.fetch(itemRequest) {
+            for item in items { item.assignedTo = MemberAssignment.everyoneRaw }
+        }
+
+        try? context.save()
+        UserDefaults.standard.set(true, forKey: migrationKey)
     }
 
     // ── Store description setup ────────────────────────────────────────────────
@@ -283,19 +309,20 @@ struct PersistenceController {
     static func seedPreviewData(in context: NSManagedObjectContext) -> [Category] {
         let categories = seedDefaultCategories(in: context)
 
-        let sampleChores: [(title: String, catIndex: Int, assignedTo: AssignedTo, dueDateType: DueDateType)] = [
-            ("Wash the dishes",    0, .me,      .specificDate),
-            ("Vacuum living room", 5, .partner, .week),
-            ("Take out trash",     5, .both,    .specificDate),
-            ("Buy groceries",      4, .partner, .month),
-            ("Clean bathroom",     1, .me,      .week),
+        // assignedTo: -1=Everyone, 0=member[0], 1=member[1], etc.
+        let sampleChores: [(title: String, catIndex: Int, assignedTo: Int16, dueDateType: DueDateType)] = [
+            ("Wash the dishes",    0, 0,  .specificDate),
+            ("Vacuum living room", 4, 1,  .week),
+            ("Take out trash",     4, -1, .specificDate),
+            ("Buy groceries",      4, 1,  .month),
+            ("Clean bathroom",     1, 0,  .week),
         ]
 
         for (index, sample) in sampleChores.enumerated() {
             let chore = Chore(context: context)
             chore.id             = UUID()
             chore.title          = sample.title
-            chore.assignedTo     = Int16(sample.assignedTo.rawValue)
+            chore.assignedTo     = sample.assignedTo
             chore.dueDateType    = Int16(sample.dueDateType.rawValue)
             chore.dueDate        = sample.dueDateType == .none
                                     ? nil
@@ -322,7 +349,7 @@ struct PersistenceController {
             item.store       = sample.store
             item.itemType    = sample.type
             item.quantity    = sample.qty
-            item.assignedTo  = 0
+            item.assignedTo  = MemberAssignment.everyoneRaw
             item.isPurchased = false
             item.createdAt   = Date()
             item.sortOrder   = Int32(index)

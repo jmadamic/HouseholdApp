@@ -2,7 +2,7 @@
 // HouseholdApp
 //
 // Main screen. Shows all chores grouped into sections by urgency/date.
-// A segmented control at the top filters by assignee (All / Mine / Partner's).
+// A segmented control at the top filters by assignee (All / each member).
 // Tapping the "+" toolbar button presents the add-chore sheet.
 
 import SwiftUI
@@ -14,8 +14,8 @@ struct ChoreListView: View {
     @EnvironmentObject private var appSettings: AppSettings
 
     // ── Filter state ───────────────────────────────────────────────────────────
-    // 0 = All, 1 = Me, 2 = Partner
-    @State private var filterIndex = 0
+    // -2 = All, -1 = Everyone, 0+ = specific member index
+    @State private var filterIndex: Int = -2
 
     // ── Sheet / alert state ────────────────────────────────────────────────────
     @State private var showingAddChore   = false
@@ -24,9 +24,6 @@ struct ChoreListView: View {
     @State private var choreToDelete: Chore? = nil
 
     // ── Fetch request ──────────────────────────────────────────────────────────
-    // We fetch all chores and filter/section in Swift rather than using
-    // multiple @FetchRequest properties — this keeps the predicate simple
-    // and avoids UI glitches when the filter changes.
     @FetchRequest(
         sortDescriptors: [
             SortDescriptor(\Chore.isCompleted, order: .forward),
@@ -41,20 +38,27 @@ struct ChoreListView: View {
     /// Chores filtered by the current assignee tab.
     private var filteredChores: [Chore] {
         switch filterIndex {
-        case 1:  return allChores.filter { $0.assignedToEnum == .me || $0.assignedToEnum == .both }
-        case 2:  return allChores.filter { $0.assignedToEnum == .partner || $0.assignedToEnum == .both }
-        default: return Array(allChores)
+        case -2:
+            // All — show everything.
+            return Array(allChores)
+        case -1:
+            // "Everyone" filter — show only chores assigned to everyone.
+            return allChores.filter { $0.assignment.isEveryone }
+        default:
+            // Specific member — show chores assigned to them OR to everyone.
+            return allChores.filter {
+                $0.assignment.isEveryone ||
+                $0.assignment.memberIndex == filterIndex
+            }
         }
     }
 
-    /// Ordered section list — only sections that have at least one chore.
     private var sections: [ChoreSection] {
         let sectionOrder: [ChoreSection] = [.overdue, .today, .thisWeek, .thisMonth, .upcoming, .noDate, .completed]
         let present = Set(filteredChores.map { $0.section })
         return sectionOrder.filter { present.contains($0) }
     }
 
-    /// Chores belonging to a given section.
     private func chores(in section: ChoreSection) -> [Chore] {
         filteredChores.filter { $0.section == section }
     }
@@ -76,10 +80,8 @@ struct ChoreListView: View {
                             Section {
                                 ForEach(chores(in: section)) { chore in
                                     ChoreRowView(chore: chore)
-                                        // Tap row to edit.
                                         .contentShape(Rectangle())
                                         .onTapGesture { choreToEdit = chore }
-                                        // Swipe actions.
                                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                             deleteSwipeAction(for: chore)
                                         }
@@ -106,15 +108,12 @@ struct ChoreListView: View {
                     }
                 }
             }
-            // ── Add chore sheet ────────────────────────────────────────────────
             .sheet(isPresented: $showingAddChore) {
                 ChoreFormView(chore: nil)
             }
-            // ── Edit chore sheet ───────────────────────────────────────────────
             .sheet(item: $choreToEdit) { chore in
                 ChoreFormView(chore: chore)
             }
-            // ── Delete confirmation ────────────────────────────────────────────
             .alert("Delete Chore?", isPresented: $showingDeleteAlert, presenting: choreToDelete) { chore in
                 Button("Delete", role: .destructive) { delete(chore) }
                 Button("Cancel", role: .cancel) {}
@@ -128,9 +127,10 @@ struct ChoreListView: View {
 
     private var filterBar: some View {
         Picker("Filter", selection: $filterIndex) {
-            Text("All").tag(0)
-            Text(appSettings.myName).tag(1)
-            Text(appSettings.partnerName).tag(2)
+            Text("All").tag(-2)
+            ForEach(appSettings.allAssignments) { assignment in
+                Text(appSettings.assigneeName(for: assignment)).tag(Int(assignment.rawValue))
+            }
         }
         .pickerStyle(.segmented)
         .padding(.horizontal)
@@ -146,7 +146,6 @@ struct ChoreListView: View {
         )
     }
 
-    /// Section header with a count badge.
     private func sectionHeader(_ section: ChoreSection) -> some View {
         HStack {
             Text(section.rawValue)
@@ -161,7 +160,6 @@ struct ChoreListView: View {
 
     // ── Swipe actions ──────────────────────────────────────────────────────────
 
-    /// Red delete button on trailing swipe.
     private func deleteSwipeAction(for chore: Chore) -> some View {
         Button(role: .destructive) {
             choreToDelete = chore
@@ -171,7 +169,6 @@ struct ChoreListView: View {
         }
     }
 
-    /// Green complete (or undo) button on leading swipe.
     @ViewBuilder
     private func completeSwipeAction(for chore: Chore) -> some View {
         if chore.isCompleted {
@@ -183,8 +180,8 @@ struct ChoreListView: View {
             .tint(.orange)
         } else {
             Button {
-                // Default to "me" for quick-complete; full credit via the row checkbox.
-                chore.markComplete(by: .me, in: ctx)
+                // Default to member 0 for quick-complete.
+                chore.markComplete(byMemberIndex: 0, in: ctx)
             } label: {
                 Label("Done", systemImage: "checkmark")
             }

@@ -1,12 +1,7 @@
 // SettingsView.swift
 // HouseholdApp
 //
-// Lets each person configure their display name, manage household sharing,
-// and view app info.
-//
-// The "Household Sharing" section is the key addition for CloudKit sharing:
-//   - If not sharing yet: shows "Invite Partner" button
-//   - If sharing: shows participants and a "Manage" button
+// Lets each person configure household members, manage sharing, and view app info.
 
 import SwiftUI
 import CoreData
@@ -20,41 +15,38 @@ struct SettingsView: View {
 
     let persistence = PersistenceController.shared
 
-    // Track counts for the "Data" section.
     @FetchRequest(sortDescriptors: []) private var allChores:         FetchedResults<Chore>
     @FetchRequest(sortDescriptors: []) private var allShoppingItems:  FetchedResults<ShoppingItem>
 
-    // Confirmation for "Delete All Data" action.
     @State private var showingDeleteAlert = false
+    @State private var showingAddMember   = false
+    @State private var newMemberName      = ""
 
     var body: some View {
         NavigationStack {
             Form {
 
-                // ── People ─────────────────────────────────────────────────────
+                // ── Household Members ─────────────────────────────────────────
                 Section {
-                    personRow(
-                        label:       "Your name",
-                        placeholder: "e.g. Alex",
-                        binding:     $appSettings.myName,
-                        color:       AssignedTo.me.color
-                    )
-                    personRow(
-                        label:       "Partner's name",
-                        placeholder: "e.g. Jordan",
-                        binding:     $appSettings.partnerName,
-                        color:       AssignedTo.partner.color
-                    )
+                    ForEach(Array(appSettings.members.enumerated()), id: \.offset) { index, name in
+                        memberRow(index: index, name: name)
+                    }
+
+                    Button {
+                        newMemberName = ""
+                        showingAddMember = true
+                    } label: {
+                        Label("Add Member", systemImage: "person.badge.plus")
+                    }
                 } header: {
-                    Text("People")
+                    Text("Household Members")
                 } footer: {
-                    Text("Names appear in the chore list and assignment picker.")
+                    Text("Names appear in the chore and shopping assignment pickers. Each device sets names locally.")
                 }
 
                 // ── Household Sharing ──────────────────────────────────────────
                 Section {
                     if shareController.isSharing {
-                        // Currently sharing — show participants.
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Household Linked")
@@ -68,15 +60,12 @@ struct SettingsView: View {
                                 .foregroundStyle(.green)
                         }
 
-                        // Manage button — opens the UICloudSharingController
-                        // to add/remove participants or copy the share link.
                         Button {
                             shareController.manageShare()
                         } label: {
                             Label("Manage Sharing", systemImage: "person.crop.circle.badge.checkmark")
                         }
 
-                        // Stop sharing.
                         Button(role: .destructive) {
                             Task { await shareController.stopSharing() }
                         } label: {
@@ -84,12 +73,11 @@ struct SettingsView: View {
                         }
 
                     } else {
-                        // Not sharing yet — show invite button.
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Not linked yet")
                                     .font(.body)
-                                Text("Invite your partner to share chores")
+                                Text("Invite household members to share chores")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -101,7 +89,7 @@ struct SettingsView: View {
                         Button {
                             Task { await shareController.createShare() }
                         } label: {
-                            Label("Invite Partner", systemImage: "person.badge.plus")
+                            Label("Invite Members", systemImage: "person.badge.plus")
                                 .fontWeight(.semibold)
                         }
                     }
@@ -109,9 +97,9 @@ struct SettingsView: View {
                     Text("Household Sharing")
                 } footer: {
                     if shareController.isSharing {
-                        Text("Both of you can add, edit, and complete chores. Each person uses their own Apple ID.")
+                        Text("Everyone can add, edit, and complete chores. Each person uses their own Apple ID.")
                     } else {
-                        Text("Tap \"Invite Partner\" to send an iCloud sharing link. Your partner opens it to join your household. Each of you keeps your own Apple ID — no shared account needed.")
+                        Text("Tap \"Invite Members\" to send an iCloud sharing link. Others open it to join your household.")
                     }
                 }
 
@@ -164,14 +152,24 @@ struct SettingsView: View {
             } message: {
                 Text("This will permanently delete all chores, shopping items, categories, and completion history. This cannot be undone.")
             }
-            // ── CloudKit sharing sheet ──────────────────────────────────────
+            .alert("Add Member", isPresented: $showingAddMember) {
+                TextField("Name", text: $newMemberName)
+                Button("Add") {
+                    let trimmed = newMemberName.trimmingCharacters(in: .whitespaces)
+                    if !trimmed.isEmpty {
+                        appSettings.addMember(trimmed)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Enter the name for the new household member.")
+            }
             .sheet(isPresented: $shareController.showingSharingSheet) {
                 if let share = shareController.activeShare {
                     CloudSharingSheet(
                         share: share,
                         container: persistence.container
                     ) {
-                        // On dismiss: refresh status.
                         shareController.showingSharingSheet = false
                         Task { await shareController.refreshShareStatus() }
                     }
@@ -182,11 +180,11 @@ struct SettingsView: View {
 
     // ── Subviews ───────────────────────────────────────────────────────────────
 
-    /// A row with a colour-dot avatar and an inline text field for name entry.
-    private func personRow(label: String, placeholder: String, binding: Binding<String>, color: Color) -> some View {
+    @ViewBuilder
+    private func memberRow(index: Int, name: String) -> some View {
         HStack(spacing: 12) {
             Circle()
-                .fill(color)
+                .fill(appSettings.memberColor(at: index))
                 .frame(width: 28, height: 28)
                 .overlay(
                     Image(systemName: "person.fill")
@@ -194,36 +192,52 @@ struct SettingsView: View {
                         .foregroundStyle(.white)
                 )
             VStack(alignment: .leading, spacing: 2) {
-                Text(label)
+                Text("Member \(index + 1)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                TextField(placeholder, text: binding)
+                TextField("Name", text: memberBinding(at: index))
                     .font(.body)
+            }
+
+            Spacer()
+
+            // Allow removing members beyond the first two (need at least 1 member).
+            if appSettings.members.count > 1 && index >= 2 {
+                Button(role: .destructive) {
+                    appSettings.removeMember(at: index)
+                } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .foregroundStyle(.red)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.vertical, 2)
     }
 
+    /// Creates a two-way binding for a specific member name by index.
+    private func memberBinding(at index: Int) -> Binding<String> {
+        Binding(
+            get: { appSettings.memberName(at: index) },
+            set: { appSettings.renameMember(at: index, to: $0) }
+        )
+    }
+
     // ── Actions ────────────────────────────────────────────────────────────────
 
-    /// Deletes all chores, shopping items, categories, and completion logs.
     private func deleteAllData() {
-        // Delete all chores (cascade deletes their CompletionLogs).
         let choreRequest: NSFetchRequest<NSFetchRequestResult> = Chore.fetchRequest()
         let choreBatch = NSBatchDeleteRequest(fetchRequest: choreRequest)
         choreBatch.resultType = .resultTypeObjectIDs
 
-        // Delete all shopping items.
         let shoppingRequest: NSFetchRequest<NSFetchRequestResult> = ShoppingItem.fetchRequest()
         let shoppingBatch = NSBatchDeleteRequest(fetchRequest: shoppingRequest)
         shoppingBatch.resultType = .resultTypeObjectIDs
 
-        // Delete all categories.
         let categoryRequest: NSFetchRequest<NSFetchRequestResult> = Category.fetchRequest()
         let categoryBatch = NSBatchDeleteRequest(fetchRequest: categoryRequest)
         categoryBatch.resultType = .resultTypeObjectIDs
 
-        // Delete all completion logs (in case any orphans remain).
         let logRequest: NSFetchRequest<NSFetchRequestResult> = CompletionLog.fetchRequest()
         let logBatch = NSBatchDeleteRequest(fetchRequest: logRequest)
         logBatch.resultType = .resultTypeObjectIDs
@@ -232,7 +246,6 @@ struct SettingsView: View {
             let results = try [choreBatch, shoppingBatch, categoryBatch, logBatch].map {
                 try ctx.execute($0) as? NSBatchDeleteResult
             }
-            // Merge changes into the view context so the UI updates.
             let objectIDs = results.compactMap { $0?.result as? [NSManagedObjectID] }.flatMap { $0 }
             NSManagedObjectContext.mergeChanges(
                 fromRemoteContextSave: [NSDeletedObjectsKey: objectIDs],

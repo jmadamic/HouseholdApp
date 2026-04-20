@@ -13,11 +13,8 @@ struct ChoreRowView: View {
     @Environment(\.managedObjectContext) private var ctx
     @EnvironmentObject private var appSettings: AppSettings
 
-    // The chore to display. ObservedObject ensures the row re-renders
-    // when the chore's properties change (e.g. after marking complete).
     @ObservedObject var chore: Chore
 
-    // Brief animation state for the completion tap.
     @State private var checkAnimating = false
 
     var body: some View {
@@ -33,7 +30,6 @@ struct ChoreRowView: View {
                     .strikethrough(chore.isCompleted, color: .secondary)
                     .foregroundStyle(chore.isCompleted ? .secondary : .primary)
 
-                // Badges row
                 HStack(spacing: 6) {
                     if let category = chore.category {
                         categoryBadge(for: category)
@@ -62,7 +58,6 @@ struct ChoreRowView: View {
 
     // ── Subviews ───────────────────────────────────────────────────────────────
 
-    /// Circular checkbox — animates on tap and calls markComplete.
     private var completionButton: some View {
         Button {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
@@ -73,7 +68,7 @@ struct ChoreRowView: View {
                 if chore.isCompleted {
                     chore.markIncomplete(in: ctx)
                 } else {
-                    chore.markComplete(by: .me, in: ctx)
+                    chore.markComplete(byMemberIndex: 0, in: ctx)
                 }
             }
         } label: {
@@ -82,10 +77,9 @@ struct ChoreRowView: View {
                 .foregroundStyle(chore.isCompleted ? .green : .secondary)
                 .scaleEffect(checkAnimating ? 1.3 : 1.0)
         }
-        .buttonStyle(.plain) // Prevent the tap from propagating to the row tap gesture.
+        .buttonStyle(.plain)
     }
 
-    /// Colored pill showing category name and icon.
     private func categoryBadge(for category: Category) -> some View {
         Label(category.nameSafe, systemImage: category.iconNameSafe)
             .font(.caption2.weight(.medium))
@@ -95,18 +89,16 @@ struct ChoreRowView: View {
             .background(category.color.opacity(0.12), in: Capsule())
     }
 
-    /// Small repeat badge shown when the chore recurs.
     private var repeatBadge: some View {
         Label(chore.repeatIntervalEnum.label, systemImage: "repeat")
             .font(.caption2)
             .foregroundStyle(.secondary)
     }
 
-    /// SF Symbol representing the assignee, tinted by their color.
     private var assigneeIcon: some View {
-        let assignee = chore.assignedToEnum
-        return Image(systemName: appSettings.icon(for: assignee))
+        let a = chore.assignment
+        return Image(systemName: appSettings.assigneeIcon(for: a))
             .font(.caption)
-            .foregroundStyle(assignee.color)
+            .foregroundStyle(a.color)
     }
 }

@@ -2,8 +2,9 @@
 // HouseholdApp
 //
 // Convenience extensions on the auto-generated NSManagedObject subclasses.
-// These bridge the raw Integer 16 Core Data values to the typed Swift enums
-// defined in Enums.swift, and add helper computed properties for the UI.
+// These bridge the raw Integer 16 Core Data values to the typed Swift models
+// defined in Enums.swift and MemberAssignment.swift, and add helper
+// computed properties for the UI.
 
 import CoreData
 import SwiftUI
@@ -20,22 +21,18 @@ extension Category {
     }
 
     /// The SwiftUI Color decoded from the stored hex string.
-    /// Falls back to `.gray` if the hex string is missing or malformed.
     var color: Color {
         Color(hex: colorHex ?? "#888888") ?? .gray
     }
 
-    /// Returns the icon name, defaulting to "questionmark.circle" if nil.
     var iconNameSafe: String {
         iconName ?? "questionmark.circle"
     }
 
-    /// Returns the display name, defaulting to "Uncategorized" if nil.
     var nameSafe: String {
         name ?? "Uncategorized"
     }
 
-    /// Number of incomplete chores in this category.
     var pendingChoreCount: Int {
         let all = (chores as? Set<Chore>) ?? []
         return all.filter { !$0.isCompleted }.count
@@ -46,7 +43,6 @@ extension Category {
 
 extension Chore {
 
-    /// Returns a fetch request sorted by sortOrder then createdAt.
     static func sortedFetchRequest(predicate: NSPredicate? = nil) -> NSFetchRequest<Chore> {
         let request: NSFetchRequest<Chore> = Chore.fetchRequest()
         request.predicate = predicate
@@ -58,12 +54,14 @@ extension Chore {
         return request
     }
 
-    // ── Typed enum accessors ───────────────────────────────────────────────────
+    // ── Member assignment accessor ────────────────────────────────────────────
 
-    var assignedToEnum: AssignedTo {
-        get { AssignedTo(rawValue: assignedTo) ?? .me }
+    var assignment: MemberAssignment {
+        get { MemberAssignment(rawValue: assignedTo) }
         set { assignedTo = newValue.rawValue }
     }
+
+    // ── Typed enum accessors (non-assignee) ───────────────────────────────────
 
     var dueDateTypeEnum: DueDateType {
         get { DueDateType(rawValue: dueDateType) ?? .none }
@@ -81,7 +79,6 @@ extension Chore {
         title ?? "Untitled"
     }
 
-    /// Human-readable due date label for list rows.
     var dueDateLabel: String? {
         let cal = Calendar.current
         switch dueDateTypeEnum {
@@ -93,7 +90,6 @@ extension Chore {
             return date.formatted(date: .abbreviated, time: .omitted)
         case .week:
             guard let date = dueDate else { return "This week" }
-            // Show "Week of Apr 7" format.
             guard let weekStart = cal.dateInterval(of: .weekOfYear, for: date)?.start else {
                 return "This week"
             }
@@ -112,9 +108,6 @@ extension Chore {
         }
     }
 
-    /// The effective due date used for overdue/section calculations.
-    /// For week-type chores, the end of that week. For month-type, the end of that month.
-    /// For specific dates, the date itself.
     private var effectiveDueDate: Date? {
         let cal = Calendar.current
         switch dueDateTypeEnum {
@@ -131,13 +124,11 @@ extension Chore {
         }
     }
 
-    /// True when the chore is past its due window.
     var isOverdue: Bool {
         guard !isCompleted, let effective = effectiveDueDate else { return false }
         return effective < Calendar.current.startOfDay(for: .now)
     }
 
-    /// True when the chore is due today (specific date only).
     var isDueToday: Bool {
         guard !isCompleted,
               dueDateTypeEnum == .specificDate,
@@ -145,7 +136,6 @@ extension Chore {
         return Calendar.current.isDateInToday(date)
     }
 
-    /// True when the chore falls within the current calendar week.
     var isDueThisWeek: Bool {
         guard !isCompleted else { return false }
         guard let date = dueDate,
@@ -155,7 +145,6 @@ extension Chore {
         return false
     }
 
-    /// True when the chore falls within the current calendar month.
     var isDueThisMonth: Bool {
         guard !isCompleted else { return false }
         guard let date = dueDate,
@@ -167,7 +156,6 @@ extension Chore {
 
     // ── Section bucketing ──────────────────────────────────────────────────────
 
-    /// Determines which ChoreSection this chore belongs to for list grouping.
     var section: ChoreSection {
         if isCompleted { return .completed }
         if isOverdue   { return .overdue   }
@@ -190,26 +178,40 @@ extension Chore {
         return .noDate
     }
 
+    // ── Completed-by members tracking ─────────────────────────────────────────
+
+    /// The set of member indices who have completed this chore.
+    var completedByMemberIndices: Set<Int> {
+        get {
+            guard let raw = completedByMembers, !raw.isEmpty else { return [] }
+            return Set(raw.split(separator: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) })
+        }
+        set {
+            completedByMembers = newValue.sorted().map(String.init).joined(separator: ",")
+        }
+    }
+
     // ── Completion logic ───────────────────────────────────────────────────────
 
-    /// Marks this chore complete for the given person and logs the completion.
+    /// Marks this chore complete for the given member and logs the completion.
     /// If the chore repeats, resets it with a new due date instead of archiving.
-    ///
-    /// - Parameters:
-    ///   - person: The person completing the chore (`.me` or `.partner`).
-    ///   - context: The managed object context to save into.
-    func markComplete(by person: AssignedTo, in context: NSManagedObjectContext) {
+    func markComplete(byMemberIndex memberIndex: Int, in context: NSManagedObjectContext) {
         let now = Date()
 
-        // Track which person completed it.
-        if person == .me || person == .both      { completedByMe      = true }
-        if person == .partner || person == .both { completedByPartner = true }
+        // Track which member completed it.
+        var indices = completedByMemberIndices
+        indices.insert(memberIndex)
+        completedByMemberIndices = indices
+
+        // Legacy bool support for first two members.
+        if memberIndex == 0 { completedByMe = true }
+        if memberIndex == 1 { completedByPartner = true }
 
         // Log the completion for history/stats.
         let log = CompletionLog(context: context)
         log.id          = UUID()
         log.completedAt = now
-        log.completedBy = Int16(person.rawValue)
+        log.completedBy = Int16(memberIndex)
         log.chore       = self
 
         let interval = repeatIntervalEnum
@@ -223,6 +225,7 @@ extension Chore {
             completedAt    = nil
             completedByMe     = false
             completedByPartner = false
+            completedByMembers = nil
         } else {
             // Non-repeating: archive it.
             isCompleted = true
@@ -238,6 +241,7 @@ extension Chore {
         completedAt        = nil
         completedByMe      = false
         completedByPartner = false
+        completedByMembers = nil
         try? context.save()
     }
 }
@@ -246,9 +250,9 @@ extension Chore {
 
 extension CompletionLog {
 
-    /// The person who completed this log entry.
-    var completedByEnum: AssignedTo {
-        AssignedTo(rawValue: completedBy) ?? .me
+    /// The member index of whoever completed this log entry.
+    var completedByMemberIndex: Int {
+        Int(completedBy)
     }
 }
 
@@ -256,7 +260,6 @@ extension CompletionLog {
 
 extension ShoppingItem {
 
-    /// Returns a fetch request sorted by purchased status, then sortOrder, then createdAt.
     static func sortedFetchRequest(predicate: NSPredicate? = nil) -> NSFetchRequest<ShoppingItem> {
         let request: NSFetchRequest<ShoppingItem> = ShoppingItem.fetchRequest()
         request.predicate = predicate
@@ -268,10 +271,10 @@ extension ShoppingItem {
         return request
     }
 
-    // ── Typed enum accessors ───────────────────────────────────────────────────
+    // ── Member assignment accessor ────────────────────────────────────────────
 
-    var assignedToEnum: AssignedTo {
-        get { AssignedTo(rawValue: assignedTo) ?? .me }
+    var assignment: MemberAssignment {
+        get { MemberAssignment(rawValue: assignedTo) }
         set { assignedTo = newValue.rawValue }
     }
 
@@ -282,22 +285,17 @@ extension ShoppingItem {
     var itemTypeSafe: String   { itemType ?? "Uncategorized" }
     var quantitySafe: String?  { quantity?.isEmpty == true ? nil : quantity }
 
-    /// Grouping key for "by store" mode. Items without a store go to "No Store".
     var storeGroupKey: String  { store?.isEmpty == false ? store! : "No Store" }
-
-    /// Grouping key for "by type" mode. Items without a type go to "Uncategorized".
     var typeGroupKey: String   { itemType?.isEmpty == false ? itemType! : "Uncategorized" }
 
     // ── Purchase actions ───────────────────────────────────────────────────────
 
-    /// Marks this item as purchased.
     func markPurchased(in context: NSManagedObjectContext) {
         isPurchased = true
         purchasedAt = Date()
         try? context.save()
     }
 
-    /// Marks this item as not yet purchased (undo).
     func markUnpurchased(in context: NSManagedObjectContext) {
         isPurchased = false
         purchasedAt = nil

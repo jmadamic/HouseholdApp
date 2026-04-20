@@ -2,15 +2,6 @@
 // HouseholdApp
 //
 // Sheet for adding a new chore or editing an existing one.
-// Pass `chore: nil` to create, or pass an existing Chore to edit.
-//
-// Fields:
-//   • Title (required)
-//   • Category dropdown with add/edit/delete
-//   • Assignee picker (Both / Me / Partner)
-//   • Due date type + date picker
-//   • Repeat interval
-//   • Notes (optional)
 
 import SwiftUI
 import CoreData
@@ -21,13 +12,12 @@ struct ChoreFormView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appSettings: AppSettings
 
-    // The chore being edited — nil when creating a new one.
     let chore: Chore?
 
     // ── Form state ─────────────────────────────────────────────────────────────
     @State private var title        = ""
     @State private var notes        = ""
-    @State private var assignedTo   = AssignedTo.both
+    @State private var assignment   = MemberAssignment.everyone
     @State private var dueDateType  = DueDateType.none
     @State private var dueDate      = Date()
     @State private var repeatInt    = RepeatInterval.none
@@ -37,16 +27,13 @@ struct ChoreFormView: View {
     @State private var showingAddCategory = false
     @State private var categoryToEdit: Category? = nil
 
-    // ── Validation ─────────────────────────────────────────────────────────────
     private var isValid: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    // ── Categories fetch ───────────────────────────────────────────────────────
     @FetchRequest(
         sortDescriptors: [SortDescriptor(\Category.sortOrder)],
         animation: .default
     ) private var categories: FetchedResults<Category>
 
-    // ── Init ───────────────────────────────────────────────────────────────────
     init(chore: Chore?) {
         self.chore = chore
     }
@@ -63,15 +50,13 @@ struct ChoreFormView: View {
 
                 // ── Who ────────────────────────────────────────────────────────
                 Section("Who") {
-                    Picker("Assign to", selection: $assignedTo) {
-                        ForEach(AssignedTo.allCases) { person in
+                    Picker("Assign to", selection: $assignment) {
+                        ForEach(appSettings.allAssignments) { a in
                             Label(
-                                person == .me      ? appSettings.myName :
-                                person == .partner ? appSettings.partnerName :
-                                "Both",
-                                systemImage: appSettings.icon(for: person)
+                                appSettings.assigneeName(for: a),
+                                systemImage: appSettings.assigneeIcon(for: a)
                             )
-                            .tag(person)
+                            .tag(a)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -87,7 +72,6 @@ struct ChoreFormView: View {
                         }
                     }
 
-                    // Add new category
                     Button {
                         showingAddCategory = true
                     } label: {
@@ -95,7 +79,6 @@ struct ChoreFormView: View {
                             .font(.subheadline)
                     }
 
-                    // Edit selected category (delete is inside the edit screen)
                     if let cat = selectedCat {
                         Button {
                             categoryToEdit = cat
@@ -113,7 +96,6 @@ struct ChoreFormView: View {
                             Label(type.label, systemImage: type.systemImage).tag(type)
                         }
                     }
-                    // Show a date picker for specific date, week, or month.
                     if dueDateType == .specificDate {
                         DatePicker(
                             "Date",
@@ -173,14 +155,11 @@ struct ChoreFormView: View {
                 }
             }
             .onAppear(perform: populateIfEditing)
-            // Sheet: add new category
             .sheet(isPresented: $showingAddCategory) {
                 CategoryFormView(category: nil)
             }
-            // Sheet: edit existing category (delete is inside the edit screen)
             .sheet(item: $categoryToEdit) { cat in
                 CategoryFormView(category: cat) {
-                    // onDelete callback — reset selection if the edited category was deleted
                     selectedCat = nil
                 }
             }
@@ -189,26 +168,24 @@ struct ChoreFormView: View {
 
     // ── Actions ────────────────────────────────────────────────────────────────
 
-    /// Pre-populate form fields from an existing chore (edit mode).
     private func populateIfEditing() {
         guard let chore else { return }
         title       = chore.titleSafe
         notes       = chore.notes ?? ""
-        assignedTo  = chore.assignedToEnum
+        assignment  = chore.assignment
         dueDateType = chore.dueDateTypeEnum
         dueDate     = chore.dueDate ?? Date()
         repeatInt   = chore.repeatIntervalEnum
         selectedCat = chore.category
     }
 
-    /// Creates a new chore or updates the existing one, then saves.
     private func save() {
         let target = chore ?? Chore(context: ctx)
 
         target.id             = target.id ?? UUID()
         target.title          = title.trimmingCharacters(in: .whitespaces)
         target.notes          = notes.isEmpty ? nil : notes
-        target.assignedToEnum = assignedTo
+        target.assignment     = assignment
         target.dueDateTypeEnum = dueDateType
         target.dueDate        = dueDateType == .none ? nil : dueDate
         target.repeatIntervalEnum = repeatInt

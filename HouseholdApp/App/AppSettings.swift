@@ -12,16 +12,104 @@ import Combine
 
 class AppSettings: ObservableObject {
 
-    // ── Person names ──────────────────────────────────────────────────────────
+    // ── Household members ────────────────────────────────────────────────────
+    // JSON-encoded array of member names, e.g. ["Jordan","Sarah","Alex"].
+    // Member index 0 = first entry, index 1 = second, etc.
 
-    @AppStorage("myName")
-    var myName: String = "Me" {
+    @AppStorage("memberNames")
+    private var memberNamesRaw: String = "" {
         willSet { objectWillChange.send() }
     }
 
-    @AppStorage("partnerName")
-    var partnerName: String = "Partner" {
-        willSet { objectWillChange.send() }
+    /// All current household member names, in order.
+    var members: [String] {
+        let decoded = decodeMemberNames()
+        return decoded.isEmpty ? Self.defaultMembers : decoded
+    }
+
+    static let defaultMembers = ["Me", "Partner"]
+
+    /// Convenience: first member name (backward compat).
+    var myName: String {
+        get { members.indices.contains(0) ? members[0] : "Me" }
+        set { renameMember(at: 0, to: newValue) }
+    }
+
+    /// Convenience: second member name (backward compat).
+    var partnerName: String {
+        get { members.indices.contains(1) ? members[1] : "Partner" }
+        set { renameMember(at: 1, to: newValue) }
+    }
+
+    /// Number of members in the household.
+    var memberCount: Int { members.count }
+
+    func addMember(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        var list = members
+        list.append(trimmed)
+        encodeMemberNames(list)
+    }
+
+    func removeMember(at index: Int) {
+        var list = members
+        guard list.indices.contains(index), list.count > 1 else { return }
+        list.remove(at: index)
+        encodeMemberNames(list)
+    }
+
+    func renameMember(at index: Int, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        var list = members
+        // Expand list if needed (e.g. first launch, migrating from old format).
+        while list.count <= index { list.append("Member \(list.count + 1)") }
+        list[index] = trimmed
+        encodeMemberNames(list)
+    }
+
+    func moveMember(from source: IndexSet, to destination: Int) {
+        var list = members
+        list.move(fromOffsets: source, toOffset: destination)
+        encodeMemberNames(list)
+    }
+
+    // ── Member display helpers ────────────────────────────────────────────────
+
+    func memberName(at index: Int) -> String {
+        members.indices.contains(index) ? members[index] : "Member \(index + 1)"
+    }
+
+    func memberColor(at index: Int) -> Color {
+        MemberAssignment.memberColors[index % MemberAssignment.memberColors.count]
+    }
+
+    /// Returns the display name for an assignee value (stored in Core Data as Int16).
+    func assigneeName(for assignment: MemberAssignment) -> String {
+        if assignment.isEveryone { return "Everyone" }
+        guard let idx = assignment.memberIndex else { return "Unknown" }
+        return memberName(at: idx)
+    }
+
+    /// Returns the icon for an assignee value.
+    func assigneeIcon(for assignment: MemberAssignment) -> String {
+        assignment.systemImage
+    }
+
+    /// All possible assignments: Everyone first, then each member.
+    var allAssignments: [MemberAssignment] {
+        [.everyone] + members.indices.map { MemberAssignment.member($0) }
+    }
+
+    // ── Migration from old myName/partnerName format ─────────────────────────
+
+    func migrateFromOldFormat() {
+        // If memberNamesRaw is empty but old keys exist, migrate.
+        guard memberNamesRaw.isEmpty else { return }
+        let oldMy = UserDefaults.standard.string(forKey: "myName") ?? "Me"
+        let oldPartner = UserDefaults.standard.string(forKey: "partnerName") ?? "Partner"
+        encodeMemberNames([oldMy, oldPartner])
     }
 
     // ── Shopping: user-addable stores ──────────────────────────────────────────
@@ -70,7 +158,6 @@ class AppSettings: ObservableObject {
         if Self.defaultStores.contains(name) {
             hiddenStoresRaw += hiddenStoresRaw.isEmpty ? name : ",\(name)"
         }
-        // Remove icon mapping
         var icons = decodeIcons(storeIconsRaw)
         icons.removeValue(forKey: name)
         storeIconsRaw = encodeIcons(icons)
@@ -81,7 +168,6 @@ class AppSettings: ObservableObject {
         guard !trimmed.isEmpty, trimmed != oldName else { return }
         removeStore(oldName)
         addStore(trimmed)
-        // Transfer icon
         var icons = decodeIcons(storeIconsRaw)
         if let icon = icons[oldName] {
             icons.removeValue(forKey: oldName)
@@ -173,25 +259,7 @@ class AppSettings: ObservableObject {
         itemTypeIconsRaw = encodeIcons(icons)
     }
 
-    // ── Convenience helpers ────────────────────────────────────────────────────
-
-    func name(for assignee: AssignedTo) -> String {
-        switch assignee {
-        case .me:      return myName
-        case .partner: return partnerName
-        case .both:    return "\(myName) & \(partnerName)"
-        }
-    }
-
-    func icon(for assignee: AssignedTo) -> String {
-        switch assignee {
-        case .me:      return "person.fill"
-        case .partner: return "person.fill"
-        case .both:    return "person.2.fill"
-        }
-    }
-
-    // ── JSON icon storage helpers ──────────────────────────────────────────────
+    // ── JSON helpers ──────────────────────────────────────────────────────────
 
     private func decodeIcons(_ raw: String) -> [String: String] {
         guard !raw.isEmpty, let data = raw.data(using: .utf8) else { return [:] }
@@ -201,5 +269,15 @@ class AppSettings: ObservableObject {
     private func encodeIcons(_ icons: [String: String]) -> String {
         guard let data = try? JSONEncoder().encode(icons) else { return "" }
         return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    private func decodeMemberNames() -> [String] {
+        guard !memberNamesRaw.isEmpty, let data = memberNamesRaw.data(using: .utf8) else { return [] }
+        return (try? JSONDecoder().decode([String].self, from: data)) ?? []
+    }
+
+    private func encodeMemberNames(_ names: [String]) {
+        guard let data = try? JSONEncoder().encode(names) else { return }
+        memberNamesRaw = String(data: data, encoding: .utf8) ?? ""
     }
 }

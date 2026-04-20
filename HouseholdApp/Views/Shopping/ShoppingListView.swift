@@ -3,13 +3,11 @@
 //
 // Main screen for the Shopping tab. Shows all shopping items grouped
 // by Store or by Type (user toggles between them).
-// Assignee filter (All / Mine / Partner's) works the same as ChoreListView.
-// "Clear Purchased" toolbar button removes all checked-off items at once.
+// Assignee filter works like ChoreListView but supports N members.
 
 import SwiftUI
 import CoreData
 
-/// How to group items in the list.
 enum ShoppingGroupBy: String, CaseIterable {
     case store = "By Store"
     case type  = "By Type"
@@ -22,12 +20,11 @@ struct ShoppingListView: View {
 
     // ── State ──────────────────────────────────────────────────────────────────
     @State private var groupBy     = ShoppingGroupBy.store
-    @State private var filterIndex = 0  // 0=All, 1=Me, 2=Partner
+    @State private var filterIndex = -2  // -2=All, -1=Everyone, 0+=member
     @State private var showingAddItem    = false
     @State private var itemToEdit: ShoppingItem? = nil
     @State private var showingClearAlert = false
 
-    // ── Fetch all shopping items ───────────────────────────────────────────────
     @FetchRequest(
         sortDescriptors: [
             SortDescriptor(\ShoppingItem.isPurchased, order: .forward),
@@ -39,37 +36,37 @@ struct ShoppingListView: View {
 
     // ── Derived data ───────────────────────────────────────────────────────────
 
-    /// Items filtered by the current assignee tab.
     private var filteredItems: [ShoppingItem] {
         switch filterIndex {
-        case 1:  return allItems.filter { $0.assignedToEnum == .me || $0.assignedToEnum == .both }
-        case 2:  return allItems.filter { $0.assignedToEnum == .partner || $0.assignedToEnum == .both }
-        default: return Array(allItems)
+        case -2:
+            return Array(allItems)
+        case -1:
+            return allItems.filter { $0.assignment.isEveryone }
+        default:
+            return allItems.filter {
+                $0.assignment.isEveryone ||
+                $0.assignment.memberIndex == filterIndex
+            }
         }
     }
 
-    /// Unpurchased items only (for section grouping — purchased go in their own section).
     private var unpurchasedItems: [ShoppingItem] {
         filteredItems.filter { !$0.isPurchased }
     }
 
-    /// Purchased items.
     private var purchasedItems: [ShoppingItem] {
         filteredItems.filter { $0.isPurchased }
     }
 
-    /// Section keys for the active grouping mode, in sorted order.
     private var sectionKeys: [String] {
         let keys: [String]
         switch groupBy {
         case .store: keys = unpurchasedItems.map(\.storeGroupKey)
         case .type:  keys = unpurchasedItems.map(\.typeGroupKey)
         }
-        // Deduplicate preserving alphabetical sort.
         return Array(Set(keys)).sorted()
     }
 
-    /// Items for a given section key.
     private func items(for key: String) -> [ShoppingItem] {
         unpurchasedItems.filter { item in
             switch groupBy {
@@ -85,9 +82,7 @@ struct ShoppingListView: View {
         NavigationStack {
             VStack(spacing: 0) {
 
-                // ── Controls bar ───────────────────────────────────────────────
                 VStack(spacing: 8) {
-                    // Group by toggle
                     Picker("Group by", selection: $groupBy) {
                         ForEach(ShoppingGroupBy.allCases, id: \.self) { mode in
                             Text(mode.rawValue).tag(mode)
@@ -95,11 +90,11 @@ struct ShoppingListView: View {
                     }
                     .pickerStyle(.segmented)
 
-                    // Assignee filter
                     Picker("Filter", selection: $filterIndex) {
-                        Text("All").tag(0)
-                        Text(appSettings.myName).tag(1)
-                        Text(appSettings.partnerName).tag(2)
+                        Text("All").tag(-2)
+                        ForEach(appSettings.allAssignments) { a in
+                            Text(appSettings.assigneeName(for: a)).tag(Int(a.rawValue))
+                        }
                     }
                     .pickerStyle(.segmented)
                 }
@@ -107,7 +102,6 @@ struct ShoppingListView: View {
                 .padding(.vertical, 8)
                 .background(Color(.systemGroupedBackground))
 
-                // ── Item list ──────────────────────────────────────────────────
                 if filteredItems.isEmpty {
                     ContentUnavailableView(
                         "No Items",
@@ -116,7 +110,6 @@ struct ShoppingListView: View {
                     )
                 } else {
                     List {
-                        // Unpurchased sections (grouped by store or type)
                         ForEach(sectionKeys, id: \.self) { key in
                             Section {
                                 ForEach(items(for: key)) { item in
@@ -150,7 +143,6 @@ struct ShoppingListView: View {
                             }
                         }
 
-                        // Purchased section
                         if !purchasedItems.isEmpty {
                             Section {
                                 ForEach(purchasedItems) { item in
@@ -189,7 +181,6 @@ struct ShoppingListView: View {
             }
             .navigationTitle("Shopping")
             .toolbar {
-                // Clear purchased items
                 ToolbarItem(placement: .navigationBarLeading) {
                     if !purchasedItems.isEmpty {
                         Button {
@@ -200,7 +191,6 @@ struct ShoppingListView: View {
                         }
                     }
                 }
-                // Add item
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { showingAddItem = true } label: {
                         Image(systemName: "plus.circle.fill")
@@ -225,7 +215,6 @@ struct ShoppingListView: View {
 
     // ── Section icon helper ────────────────────────────────────────────────────
 
-    /// Returns an icon appropriate for the section key based on grouping mode.
     @ViewBuilder
     private func sectionIcon(for key: String) -> some View {
         switch groupBy {
@@ -234,31 +223,9 @@ struct ShoppingListView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .type:
-            Image(systemName: iconForType(key))
+            Image(systemName: appSettings.iconForItemType(key))
                 .font(.caption)
-                .foregroundStyle(colorForType(key))
-        }
-    }
-
-    private func iconForType(_ type: String) -> String {
-        switch type.lowercased() {
-        case "food":          return "fork.knife"
-        case "furniture":     return "sofa.fill"
-        case "maintenance":   return "wrench.fill"
-        case "household":     return "house.fill"
-        case "personal care": return "heart.fill"
-        default:              return "tag.fill"
-        }
-    }
-
-    private func colorForType(_ type: String) -> Color {
-        switch type.lowercased() {
-        case "food":          return .orange
-        case "furniture":     return .brown
-        case "maintenance":   return .blue
-        case "household":     return .purple
-        case "personal care": return .pink
-        default:              return .gray
+                .foregroundStyle(.secondary)
         }
     }
 

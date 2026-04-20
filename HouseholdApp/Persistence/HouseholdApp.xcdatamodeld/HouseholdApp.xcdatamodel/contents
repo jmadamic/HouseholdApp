@@ -42,9 +42,9 @@
         <!-- Optional longer description -->
         <attribute name="notes"             optional="YES" attributeType="String"/>
 
-        <!-- Who should do it: 0=Me  1=Partner  2=Both
-             See Enums.swift → AssignedTo -->
-        <attribute name="assignedTo"        optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <!-- Who should do it: -1=Everyone  0+=member index
+             See MemberAssignment.swift -->
+        <attribute name="assignedTo"        optional="YES" attributeType="Integer 16" defaultValueString="-1" usesScalarValueType="YES"/>
 
         <!-- Due date type: 0=specificDate  1=thisWeek  2=thisMonth  3=none
              See Enums.swift → DueDateType -->
@@ -61,9 +61,12 @@
         <!-- Completion state -->
         <attribute name="isCompleted"       optional="YES" attributeType="Boolean"    defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="completedAt"       optional="YES" attributeType="Date"       usesScalarValueType="NO"/>
-        <!-- Track which person(s) completed — useful for "Both" chores -->
+        <!-- Track which person(s) completed — useful for "Everyone" chores.
+             Legacy booleans kept for backward compat; new field is preferred. -->
         <attribute name="completedByMe"      optional="YES" attributeType="Boolean"   defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="completedByPartner" optional="YES" attributeType="Boolean"   defaultValueString="NO" usesScalarValueType="YES"/>
+        <!-- Comma-separated member indices who completed, e.g. "0,2" -->
+        <attribute name="completedByMembers" optional="YES" attributeType="String"/>
 
         <!-- Timestamps -->
         <attribute name="createdAt"         optional="YES" attributeType="Date"       usesScalarValueType="NO"/>
