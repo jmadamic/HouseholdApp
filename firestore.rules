@@ -64,12 +64,17 @@ service cloud.firestore {
     }
 
     // ── invites/{code} ─────────────────────────────────────────────────────
-    // Any signed-in user can look up an invite code (to find the household).
-    // Only the household's members can create or delete invites.
+    // Any signed-in user can read or create an invite code.
+    // Create is open to authenticated users because household creation writes
+    // both the household and invite in one batch — the household doesn't exist
+    // yet when Firestore evaluates the invite rule, so isMember() would fail.
+    // Invite codes are not sensitive; security is enforced on the household.
+    // Only members of the household may delete (rotate) an invite code.
     match /invites/{code} {
       allow read: if request.auth != null;
-      allow create, delete: if request.auth != null &&
-                               isMember(request.resource.data.householdId);
+      allow create: if request.auth != null;
+      allow delete: if request.auth != null &&
+                       isMember(resource.data.householdId);
       allow update: if false;
     }
   }
