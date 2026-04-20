@@ -77,13 +77,40 @@ struct ShoppingRowView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                let a = item.assignment
-                Image(systemName: appSettings.assigneeIcon(for: a))
-                    .font(.caption)
-                    .foregroundStyle(a.color)
+                assigneeView
             }
         }
         .padding(.vertical, 2)
         .opacity(item.isPurchased ? 0.6 : 1.0)
+    }
+
+    // ── Assignee display ───────────────────────────────────────────────────────
+
+    private var assigneeView: some View {
+        let indices = Array(item.assignedMemberIndices.sorted())
+        return Group {
+            if indices.isEmpty {
+                Image(systemName: "person.2.fill")
+                    .font(.caption)
+                    .foregroundStyle(.purple)
+            } else if indices.count == 1, let idx = indices.first {
+                Image(systemName: "person.fill")
+                    .font(.caption)
+                    .foregroundStyle(appSettings.memberColor(at: idx))
+            } else {
+                HStack(spacing: 3) {
+                    ForEach(indices.prefix(3), id: \.self) { idx in
+                        Circle()
+                            .fill(appSettings.memberColor(at: idx))
+                            .frame(width: 7, height: 7)
+                    }
+                    if indices.count > 3 {
+                        Text("+\(indices.count - 3)")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
     }
 }

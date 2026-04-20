@@ -14,7 +14,7 @@ struct ChoreListView: View {
     @EnvironmentObject private var appSettings: AppSettings
 
     // ── Filter state ───────────────────────────────────────────────────────────
-    // -2 = All, -1 = Everyone, 0+ = specific member index
+    // -2 = All, 0+ = specific member index
     @State private var filterIndex: Int = -2
 
     // ── Sheet / alert state ────────────────────────────────────────────────────
@@ -37,19 +37,11 @@ struct ChoreListView: View {
 
     /// Chores filtered by the current assignee tab.
     private var filteredChores: [Chore] {
-        switch filterIndex {
-        case -2:
-            // All — show everything.
-            return Array(allChores)
-        case -1:
-            // "Everyone" filter — show only chores assigned to everyone.
-            return allChores.filter { $0.assignment.isEveryone }
-        default:
-            // Specific member — show chores assigned to them OR to everyone.
-            return allChores.filter {
-                $0.assignment.isEveryone ||
-                $0.assignment.memberIndex == filterIndex
-            }
+        guard filterIndex >= 0 else { return Array(allChores) }
+        // Specific member: show chores assigned to them OR to everyone (empty set).
+        return allChores.filter {
+            $0.assignedMemberIndices.isEmpty ||
+            $0.assignedMemberIndices.contains(filterIndex)
         }
     }
 
@@ -128,8 +120,8 @@ struct ChoreListView: View {
     private var filterBar: some View {
         Picker("Filter", selection: $filterIndex) {
             Text("All").tag(-2)
-            ForEach(appSettings.allAssignments) { assignment in
-                Text(appSettings.assigneeName(for: assignment)).tag(Int(assignment.rawValue))
+            ForEach(Array(appSettings.members.indices), id: \.self) { idx in
+                Text(appSettings.memberName(at: idx)).tag(idx)
             }
         }
         .pickerStyle(.segmented)

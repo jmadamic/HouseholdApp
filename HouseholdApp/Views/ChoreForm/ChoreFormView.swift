@@ -15,10 +15,11 @@ struct ChoreFormView: View {
     let chore: Chore?
 
     // ── Form state ─────────────────────────────────────────────────────────────
-    @State private var title        = ""
-    @State private var notes        = ""
-    @State private var assignment   = MemberAssignment.everyone
-    @State private var dueDateType  = DueDateType.none
+    @State private var title           = ""
+    @State private var notes           = ""
+    /// Empty set = Everyone (all members). Non-empty = specific member indices.
+    @State private var selectedMembers: Set<Int> = []
+    @State private var dueDateType     = DueDateType.none
     @State private var dueDate      = Date()
     @State private var repeatInt    = RepeatInterval.none
     @State private var selectedCat: Category? = nil
@@ -50,16 +51,19 @@ struct ChoreFormView: View {
 
                 // ── Who ────────────────────────────────────────────────────────
                 Section("Who") {
-                    Picker("Assign to", selection: $assignment) {
-                        ForEach(appSettings.allAssignments) { a in
-                            Label(
-                                appSettings.assigneeName(for: a),
-                                systemImage: appSettings.assigneeIcon(for: a)
-                            )
-                            .tag(a)
-                        }
+                    ForEach(Array(appSettings.members.indices), id: \.self) { idx in
+                        Toggle(appSettings.memberName(at: idx), isOn: Binding(
+                            get: { isMemberIncluded(idx) },
+                            set: { _ in toggleMember(idx) }
+                        ))
+                        .tint(appSettings.memberColor(at: idx))
                     }
-                    .pickerStyle(.segmented)
+                    if !selectedMembers.isEmpty {
+                        Button("Select All") {
+                            selectedMembers = []
+                        }
+                        .foregroundStyle(.blue)
+                    }
                 }
 
                 // ── Category (dropdown with edit) ─────────────────────────────
@@ -168,30 +172,56 @@ struct ChoreFormView: View {
 
     // ── Actions ────────────────────────────────────────────────────────────────
 
+    // ── Member selection helpers ───────────────────────────────────────────────
+
+    private func isMemberIncluded(_ idx: Int) -> Bool {
+        selectedMembers.isEmpty || selectedMembers.contains(idx)
+    }
+
+    private func toggleMember(_ idx: Int) {
+        if selectedMembers.isEmpty {
+            // Currently "Everyone" — deselecting one member makes the rest explicit
+            guard appSettings.members.count > 1 else { return }
+            selectedMembers = Set(appSettings.members.indices.filter { $0 != idx })
+        } else if selectedMembers.contains(idx) {
+            var updated = selectedMembers
+            updated.remove(idx)
+            // Never leave an empty set from explicit removal (use "Select All" for everyone)
+            if !updated.isEmpty { selectedMembers = updated }
+        } else {
+            var updated = selectedMembers
+            updated.insert(idx)
+            // If all members now selected, collapse back to "Everyone" (empty = all)
+            selectedMembers = updated.count == appSettings.members.count ? [] : updated
+        }
+    }
+
+    // ── Actions ────────────────────────────────────────────────────────────────
+
     private func populateIfEditing() {
         guard let chore else { return }
-        title       = chore.titleSafe
-        notes       = chore.notes ?? ""
-        assignment  = chore.assignment
-        dueDateType = chore.dueDateTypeEnum
-        dueDate     = chore.dueDate ?? Date()
-        repeatInt   = chore.repeatIntervalEnum
-        selectedCat = chore.category
+        title          = chore.titleSafe
+        notes          = chore.notes ?? ""
+        selectedMembers = chore.assignedMemberIndices
+        dueDateType    = chore.dueDateTypeEnum
+        dueDate        = chore.dueDate ?? Date()
+        repeatInt      = chore.repeatIntervalEnum
+        selectedCat    = chore.category
     }
 
     private func save() {
         let target = chore ?? Chore(context: ctx)
 
-        target.id             = target.id ?? UUID()
-        target.title          = title.trimmingCharacters(in: .whitespaces)
-        target.notes          = notes.isEmpty ? nil : notes
-        target.assignment     = assignment
-        target.dueDateTypeEnum = dueDateType
-        target.dueDate        = dueDateType == .none ? nil : dueDate
-        target.repeatIntervalEnum = repeatInt
-        target.category       = selectedCat
-        target.createdAt      = target.createdAt ?? Date()
-        target.sortOrder      = target.sortOrder
+        target.id                    = target.id ?? UUID()
+        target.title                 = title.trimmingCharacters(in: .whitespaces)
+        target.notes                 = notes.isEmpty ? nil : notes
+        target.assignedMemberIndices = selectedMembers
+        target.dueDateTypeEnum       = dueDateType
+        target.dueDate               = dueDateType == .none ? nil : dueDate
+        target.repeatIntervalEnum    = repeatInt
+        target.category              = selectedCat
+        target.createdAt             = target.createdAt ?? Date()
+        target.sortOrder             = target.sortOrder
 
         try? ctx.save()
         dismiss()

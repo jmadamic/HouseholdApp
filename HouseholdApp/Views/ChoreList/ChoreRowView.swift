@@ -96,9 +96,33 @@ struct ChoreRowView: View {
     }
 
     private var assigneeIcon: some View {
-        let a = chore.assignment
-        return Image(systemName: appSettings.assigneeIcon(for: a))
-            .font(.caption)
-            .foregroundStyle(a.color)
+        let indices = Array(chore.assignedMemberIndices.sorted())
+        return Group {
+            if indices.isEmpty {
+                // Everyone
+                Image(systemName: "person.2.fill")
+                    .font(.caption)
+                    .foregroundStyle(.purple)
+            } else if indices.count == 1, let idx = indices.first {
+                // Single member
+                Image(systemName: "person.fill")
+                    .font(.caption)
+                    .foregroundStyle(appSettings.memberColor(at: idx))
+            } else {
+                // Multiple members — show colored dots
+                HStack(spacing: 3) {
+                    ForEach(indices.prefix(3), id: \.self) { idx in
+                        Circle()
+                            .fill(appSettings.memberColor(at: idx))
+                            .frame(width: 7, height: 7)
+                    }
+                    if indices.count > 3 {
+                        Text("+\(indices.count - 3)")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
     }
 }

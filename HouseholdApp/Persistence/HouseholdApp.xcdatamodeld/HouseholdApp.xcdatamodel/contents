@@ -42,9 +42,10 @@
         <!-- Optional longer description -->
         <attribute name="notes"             optional="YES" attributeType="String"/>
 
-        <!-- Who should do it: -1=Everyone  0+=member index
-             See MemberAssignment.swift -->
+        <!-- Legacy single-assignee field (kept for CloudKit compat, do not use in new code) -->
         <attribute name="assignedTo"        optional="YES" attributeType="Integer 16" defaultValueString="-1" usesScalarValueType="YES"/>
+        <!-- Multi-assignee: comma-separated member indices e.g. "0,1" or "0". Nil/empty = all members -->
+        <attribute name="assignedToMembers" optional="YES" attributeType="String"/>
 
         <!-- Due date type: 0=specificDate  1=thisWeek  2=thisMonth  3=none
              See Enums.swift → DueDateType -->
@@ -115,6 +116,8 @@
         <attribute name="itemType"    optional="YES" attributeType="String"/>
         <!-- Who should buy it: 0=Me  1=Partner  2=Both -->
         <attribute name="assignedTo"  optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <!-- Multi-assignee: comma-separated member indices e.g. "0,1" or "0". Nil/empty = all members -->
+        <attribute name="assignedToMembers" optional="YES" attributeType="String"/>
         <!-- Checked off? -->
         <attribute name="isPurchased" optional="YES" attributeType="Boolean"    defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="purchasedAt" optional="YES" attributeType="Date"       usesScalarValueType="NO"/>

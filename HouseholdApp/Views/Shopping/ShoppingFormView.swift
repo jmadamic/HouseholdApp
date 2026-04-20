@@ -26,12 +26,13 @@ struct ShoppingFormView: View {
     let item: ShoppingItem?
 
     // ── Form state ─────────────────────────────────────────────────────────────
-    @State private var name       = ""
-    @State private var quantity   = ""
-    @State private var store      = ""
-    @State private var itemType   = ""
-    @State private var assignment = MemberAssignment.everyone
-    @State private var notes      = ""
+    @State private var name            = ""
+    @State private var quantity        = ""
+    @State private var store           = ""
+    @State private var itemType        = ""
+    /// Empty set = Everyone. Non-empty = specific member indices.
+    @State private var selectedMembers: Set<Int> = []
+    @State private var notes           = ""
 
     // ── Store management state ────────────────────────────────────────────────
     @State private var showingAddStore    = false
@@ -60,16 +61,19 @@ struct ShoppingFormView: View {
 
                 // ── Who ────────────────────────────────────────────────────────
                 Section("Who's buying") {
-                    Picker("Assign to", selection: $assignment) {
-                        ForEach(appSettings.allAssignments) { a in
-                            Label(
-                                appSettings.assigneeName(for: a),
-                                systemImage: appSettings.assigneeIcon(for: a)
-                            )
-                            .tag(a)
-                        }
+                    ForEach(Array(appSettings.members.indices), id: \.self) { idx in
+                        Toggle(appSettings.memberName(at: idx), isOn: Binding(
+                            get: { isMemberIncluded(idx) },
+                            set: { _ in toggleMember(idx) }
+                        ))
+                        .tint(appSettings.memberColor(at: idx))
                     }
-                    .pickerStyle(.segmented)
+                    if !selectedMembers.isEmpty {
+                        Button("Select All") {
+                            selectedMembers = []
+                        }
+                        .foregroundStyle(.blue)
+                    }
                 }
 
                 // ── Item Type (dropdown with add/edit) ───────────────────────
@@ -186,29 +190,50 @@ struct ShoppingFormView: View {
         }
     }
 
+    // ── Member selection helpers ───────────────────────────────────────────────
+
+    private func isMemberIncluded(_ idx: Int) -> Bool {
+        selectedMembers.isEmpty || selectedMembers.contains(idx)
+    }
+
+    private func toggleMember(_ idx: Int) {
+        if selectedMembers.isEmpty {
+            guard appSettings.members.count > 1 else { return }
+            selectedMembers = Set(appSettings.members.indices.filter { $0 != idx })
+        } else if selectedMembers.contains(idx) {
+            var updated = selectedMembers
+            updated.remove(idx)
+            if !updated.isEmpty { selectedMembers = updated }
+        } else {
+            var updated = selectedMembers
+            updated.insert(idx)
+            selectedMembers = updated.count == appSettings.members.count ? [] : updated
+        }
+    }
+
     // ── Actions ────────────────────────────────────────────────────────────────
 
     private func populateIfEditing() {
         guard let item else { return }
-        name       = item.nameSafe
-        quantity   = item.quantity ?? ""
-        store      = item.store ?? ""
-        itemType   = item.itemType ?? ""
-        assignment = item.assignment
-        notes      = item.notes ?? ""
+        name            = item.nameSafe
+        quantity        = item.quantity ?? ""
+        store           = item.store ?? ""
+        itemType        = item.itemType ?? ""
+        selectedMembers = item.assignedMemberIndices
+        notes           = item.notes ?? ""
     }
 
     private func save() {
         let target = item ?? ShoppingItem(context: ctx)
 
-        target.id             = target.id ?? UUID()
-        target.name           = name.trimmingCharacters(in: .whitespaces)
-        target.quantity       = quantity.isEmpty ? nil : quantity
-        target.store          = store.isEmpty ? nil : store
-        target.itemType       = itemType.isEmpty ? nil : itemType
-        target.assignment     = assignment
-        target.notes          = notes.isEmpty ? nil : notes
-        target.createdAt      = target.createdAt ?? Date()
+        target.id                    = target.id ?? UUID()
+        target.name                  = name.trimmingCharacters(in: .whitespaces)
+        target.quantity              = quantity.isEmpty ? nil : quantity
+        target.store                 = store.isEmpty ? nil : store
+        target.itemType              = itemType.isEmpty ? nil : itemType
+        target.assignedMemberIndices = selectedMembers
+        target.notes                 = notes.isEmpty ? nil : notes
+        target.createdAt             = target.createdAt ?? Date()
 
         try? ctx.save()
         dismiss()

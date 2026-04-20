@@ -54,7 +54,35 @@ extension Chore {
         return request
     }
 
-    // ── Member assignment accessor ────────────────────────────────────────────
+    // ── Multi-member assignment accessor ─────────────────────────────────────
+    // Empty set = "Everyone" (all current and future members).
+    // Non-empty set = specific member indices only.
+    // Reads from `assignedToMembers` String first; falls back to legacy `assignedTo` Int16.
+
+    var assignedMemberIndices: Set<Int> {
+        get {
+            if let raw = assignedToMembers, !raw.isEmpty {
+                return Set(raw.split(separator: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) })
+            }
+            // Legacy fallback: -1 = everyone, 0+ = specific member
+            switch assignedTo {
+            case -1:          return []
+            case let i where i >= 0: return [Int(i)]
+            default:          return []
+            }
+        }
+        set {
+            if newValue.isEmpty {
+                assignedToMembers = nil
+                assignedTo        = -1
+            } else {
+                assignedToMembers = newValue.sorted().map(String.init).joined(separator: ",")
+                assignedTo        = Int16(newValue.sorted().first ?? 0)
+            }
+        }
+    }
+
+    // ── Legacy single-assignment accessor (kept for older code paths) ─────────
 
     var assignment: MemberAssignment {
         get { MemberAssignment(rawValue: assignedTo) }
@@ -271,7 +299,31 @@ extension ShoppingItem {
         return request
     }
 
-    // ── Member assignment accessor ────────────────────────────────────────────
+    // ── Multi-member assignment accessor ─────────────────────────────────────
+
+    var assignedMemberIndices: Set<Int> {
+        get {
+            if let raw = assignedToMembers, !raw.isEmpty {
+                return Set(raw.split(separator: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) })
+            }
+            switch assignedTo {
+            case -1:          return []
+            case let i where i >= 0: return [Int(i)]
+            default:          return []
+            }
+        }
+        set {
+            if newValue.isEmpty {
+                assignedToMembers = nil
+                assignedTo        = -1
+            } else {
+                assignedToMembers = newValue.sorted().map(String.init).joined(separator: ",")
+                assignedTo        = Int16(newValue.sorted().first ?? 0)
+            }
+        }
+    }
+
+    // ── Legacy single-assignment accessor ─────────────────────────────────────
 
     var assignment: MemberAssignment {
         get { MemberAssignment(rawValue: assignedTo) }

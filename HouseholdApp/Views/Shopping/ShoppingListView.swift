@@ -20,7 +20,7 @@ struct ShoppingListView: View {
 
     // ── State ──────────────────────────────────────────────────────────────────
     @State private var groupBy     = ShoppingGroupBy.store
-    @State private var filterIndex = -2  // -2=All, -1=Everyone, 0+=member
+    @State private var filterIndex = -2  // -2=All, 0+=member
     @State private var showingAddItem    = false
     @State private var itemToEdit: ShoppingItem? = nil
     @State private var showingClearAlert = false
@@ -37,16 +37,10 @@ struct ShoppingListView: View {
     // ── Derived data ───────────────────────────────────────────────────────────
 
     private var filteredItems: [ShoppingItem] {
-        switch filterIndex {
-        case -2:
-            return Array(allItems)
-        case -1:
-            return allItems.filter { $0.assignment.isEveryone }
-        default:
-            return allItems.filter {
-                $0.assignment.isEveryone ||
-                $0.assignment.memberIndex == filterIndex
-            }
+        guard filterIndex >= 0 else { return Array(allItems) }
+        return allItems.filter {
+            $0.assignedMemberIndices.isEmpty ||
+            $0.assignedMemberIndices.contains(filterIndex)
         }
     }
 
@@ -92,8 +86,8 @@ struct ShoppingListView: View {
 
                     Picker("Filter", selection: $filterIndex) {
                         Text("All").tag(-2)
-                        ForEach(appSettings.allAssignments) { a in
-                            Text(appSettings.assigneeName(for: a)).tag(Int(a.rawValue))
+                        ForEach(Array(appSettings.members.indices), id: \.self) { idx in
+                            Text(appSettings.memberName(at: idx)).tag(idx)
                         }
                     }
                     .pickerStyle(.segmented)

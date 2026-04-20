@@ -10,7 +10,7 @@ A household chore app for **any number of people**, built with **SwiftUI + Core 
 | Feature | Details |
 |---|---|
 | **Categories** | Group chores into colour-coded, icon-tagged buckets (Kitchen, Bathroom, Outdoor, etc.) |
-| **Assignments** | Assign each chore to any household member or Everyone — supports 2+ people |
+| **Assignments** | Multi-select any combination of household members per chore or item — "Select All" sets to Everyone |
 | **Due dates** | Pick a specific date, any week, any month, or no due date — supports future weeks and months |
 | **Repeating chores** | Daily, weekly, bi-weekly, monthly, or yearly — chore resets automatically after completion |
 | **Completion tracking** | Per-person history stored for every completion |
@@ -174,14 +174,14 @@ If you and your partner share a single Apple ID (common for family purchases), C
 | `id` | UUID | Primary key |
 | `title` | String | Short chore description |
 | `notes` | String? | Optional detail |
-| `assignedTo` | Int16 | 0=Me, 1=Partner, 2=Both |
+| `assignedTo` | Int16 | Legacy field: -1=Everyone, 0+=member index |
+| `assignedToMembers` | String? | Multi-assignee: comma-separated indices e.g. `"0,1"`. Nil/empty = Everyone |
 | `dueDateType` | Int16 | 0=Specific date, 1=Week, 2=Month, 3=None |
 | `dueDate` | Date? | Set for all non-None types; stores a date within the selected week/month |
 | `repeatInterval` | Int16 | 0=None, 1=Daily, 2=Weekly, 3=Biweekly, 4=Monthly, 5=Yearly |
 | `isCompleted` | Bool | Whether the chore is done |
 | `completedAt` | Date? | When it was completed |
-| `completedByMe` | Bool | Completion flag for person 1 |
-| `completedByPartner` | Bool | Completion flag for person 2 |
+| `completedByMembers` | String? | Comma-separated member indices who completed |
 
 ### Category
 
@@ -206,7 +206,8 @@ This powers per-person history and future stats/streaks features.
 | `quantity` | String? | Optional quantity (e.g. "2", "1 gal") |
 | `store` | String? | Store name (e.g. "Costco", "Target") |
 | `itemType` | String? | Item category (e.g. "Food", "Household") |
-| `assignedTo` | Int16 | 0=Me, 1=Partner, 2=Both |
+| `assignedTo` | Int16 | Legacy field: -1=Everyone, 0+=member index |
+| `assignedToMembers` | String? | Multi-assignee: comma-separated indices e.g. `"0,1"`. Nil/empty = Everyone |
 | `isPurchased` | Bool | Whether the item has been bought |
 | `purchasedAt` | Date? | When it was purchased |
 | `notes` | String? | Optional notes |
