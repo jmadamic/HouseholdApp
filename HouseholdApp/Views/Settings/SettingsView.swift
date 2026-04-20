@@ -58,7 +58,7 @@ struct SettingsView: View {
                         }
                         .padding(.vertical, 4)
 
-                        Text("\(household.memberUIDs.count) member(s) in this household")
+                        Text("\(household.memberIds.count) member(s) in this household")
                             .font(.caption).foregroundStyle(.secondary)
 
                         Button(role: .destructive) { showingLeaveAlert = true } label: {

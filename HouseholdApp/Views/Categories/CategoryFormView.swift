@@ -131,7 +131,7 @@ struct CategoryFormView: View {
     }
 
     private func save() {
-        let hexString = color.toHex() ?? "#4A90E2"
+        let hexString = color.hexString
         var target = category ?? CategoryDoc(
             id: UUID().uuidString, name: "", colorHex: "#4A90E2", iconName: "star.fill", sortOrder: 0
         )

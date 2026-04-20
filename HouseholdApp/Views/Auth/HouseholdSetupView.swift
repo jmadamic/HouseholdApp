@@ -18,7 +18,7 @@ struct HouseholdSetupView: View {
             Form {
 
                 // ── Create new ─────────────────────────────────────────────────
-                Section("Create a Household") {
+                Section {
                     TextField("Household name (optional)", text: $newHouseholdName)
                     Button {
                         Task {
@@ -35,12 +35,14 @@ struct HouseholdSetupView: View {
                         }
                     }
                     .disabled(household.isBusy)
+                } header: {
+                    Text("Create a Household")
                 } footer: {
                     Text("Creates a new household with you as the owner. You'll get an invite code to share.")
                 }
 
                 // ── Join existing ──────────────────────────────────────────────
-                Section("Join a Household") {
+                Section {
                     TextField("Invite code", text: $inviteCode)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
@@ -56,6 +58,8 @@ struct HouseholdSetupView: View {
                         }
                     }
                     .disabled(household.isBusy || inviteCode.isEmpty)
+                } header: {
+                    Text("Join a Household")
                 } footer: {
                     Text("Ask the person who created the household for the 6-character invite code.")
                 }
