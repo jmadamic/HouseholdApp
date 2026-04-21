@@ -2,8 +2,8 @@
 import SwiftUI
 
 enum ShoppingGroupBy: String, CaseIterable {
-    case store = "By Store"
-    case type  = "By Type"
+    case store = "Store"
+    case type  = "Type"
 }
 
 struct ShoppingListView: View {
