@@ -19,15 +19,6 @@ struct CategoryFormView: View {
     private var isEditing: Bool { category != nil }
     private var householdId: String { householdCtrl.household?.id ?? "" }
 
-    static let iconOptions: [String] = [
-        "fork.knife",   "cup.and.saucer.fill", "trash.fill",       "washer.fill",
-        "shower",       "bed.double.fill",      "sofa.fill",        "chair.fill",
-        "cart.fill",    "leaf.fill",            "figure.walk",      "car.fill",
-        "house.fill",   "envelope.fill",        "phone.fill",       "pawprint.fill",
-        "wrench.fill",  "lightbulb.fill",       "paintbrush.fill",  "scissors",
-        "hammer.fill",  "archivebox.fill",      "bag.fill",         "star.fill",
-    ]
-
     private let colorOptions: [Color] = [
         .red, .orange, .yellow, .green, .mint, .teal,
         .cyan, .blue, .indigo, .purple, .pink, .gray,
@@ -44,7 +35,7 @@ struct CategoryFormView: View {
                     HStack {
                         Spacer()
                         VStack(spacing: 8) {
-                            Image(systemName: iconName).font(.largeTitle).foregroundStyle(color)
+                            AppIcon(name: iconName, color: color, font: .largeTitle)
                             Text(name.isEmpty ? "Preview" : name).font(.headline)
                         }
                         .padding()
@@ -71,19 +62,7 @@ struct CategoryFormView: View {
                     .padding(.vertical, 4)
                 }
 
-                Section("Icon") {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 14) {
-                        ForEach(Self.iconOptions, id: \.self) { icon in
-                            Image(systemName: icon)
-                                .font(.title3)
-                                .foregroundStyle(iconName == icon ? .white : color)
-                                .frame(width: 40, height: 40)
-                                .background(iconName == icon ? color : color.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
-                                .onTapGesture { iconName = icon }
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
+                IconPickerSection(iconName: $iconName, accentColor: color)
 
                 if isEditing {
                     Section {

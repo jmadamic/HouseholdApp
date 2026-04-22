@@ -45,7 +45,7 @@ struct ShoppingRowView: View {
                     }
                 }
                 if let t = item.itemType, !t.isEmpty {
-                    Label(t, systemImage: appSettings.iconForItemType(t))
+                    AppIconLabel(title: t, icon: appSettings.iconForItemType(t))
                         .font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Color.secondary.opacity(0.12), in: Capsule())

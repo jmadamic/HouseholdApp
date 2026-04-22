@@ -55,7 +55,7 @@ struct ShoppingFormView: View {
                     Picker("Item type", selection: $itemType) {
                         Text("None").tag("")
                         ForEach(appSettings.itemTypes, id: \.self) { t in
-                            Label(t, systemImage: appSettings.iconForItemType(t)).tag(t)
+                            AppIconLabel(title: t, icon: appSettings.iconForItemType(t)).tag(t)
                         }
                     }
                     Button { showingAddType = true } label: {
@@ -72,7 +72,7 @@ struct ShoppingFormView: View {
                     Picker("Store", selection: $store) {
                         Text("None").tag("")
                         ForEach(appSettings.stores, id: \.self) { s in
-                            Label(s, systemImage: appSettings.iconForStore(s)).tag(s)
+                            AppIconLabel(title: s, icon: appSettings.iconForStore(s)).tag(s)
                         }
                     }
                     Button { showingAddStore = true } label: {

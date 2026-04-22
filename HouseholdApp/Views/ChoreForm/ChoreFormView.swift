@@ -49,7 +49,7 @@ struct ChoreFormView: View {
                     Picker("Category", selection: $selectedCatId) {
                         Text("None").tag(nil as String?)
                         ForEach(categoryStore.categories) { cat in
-                            Label(cat.nameSafe, systemImage: cat.iconNameSafe).tag(cat.id as String?)
+                            AppIconLabel(title: cat.nameSafe, icon: cat.iconNameSafe).tag(cat.id as String?)
                         }
                     }
                     Button { showingAddCategory = true } label: {

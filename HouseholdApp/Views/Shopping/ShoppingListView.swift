@@ -159,7 +159,7 @@ struct ShoppingListView: View {
     private func sectionIcon(for key: String) -> some View {
         switch groupBy {
         case .store: Image(systemName: "storefront").font(.caption).foregroundStyle(.secondary)
-        case .type:  Image(systemName: appSettings.iconForItemType(key)).font(.caption).foregroundStyle(.secondary)
+        case .type:  AppIcon(name: appSettings.iconForItemType(key), color: .secondary, font: .caption)
         }
     }
 }

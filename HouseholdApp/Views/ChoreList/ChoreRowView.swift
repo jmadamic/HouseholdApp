@@ -65,7 +65,7 @@ struct ChoreRowView: View {
 
     private func categoryBadge(for cat: CategoryDoc) -> some View {
         let color = Color(hex: cat.colorHex) ?? .gray
-        return Label(cat.nameSafe, systemImage: cat.iconNameSafe)
+        return AppIconLabel(title: cat.nameSafe, icon: cat.iconNameSafe, color: color)
             .font(.caption2.weight(.medium))
             .foregroundStyle(color)
             .padding(.horizontal, 6).padding(.vertical, 2)

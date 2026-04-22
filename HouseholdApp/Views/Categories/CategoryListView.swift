@@ -69,9 +69,7 @@ struct CategoryListView: View {
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Image(systemName: category.iconNameSafe)
-                        .font(.title2)
-                        .foregroundStyle(color)
+                    AppIcon(name: category.iconNameSafe, color: color, font: .title2)
                     Spacer()
                     if pendingCount > 0 {
                         Text("\(pendingCount)")

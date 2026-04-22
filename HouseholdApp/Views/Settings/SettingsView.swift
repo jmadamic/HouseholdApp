@@ -134,9 +134,6 @@ struct SettingsView: View {
                         Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
                             .foregroundStyle(.secondary)
                     }
-                    LabeledContent("Built with") {
-                        Text("SwiftUI + Firebase").foregroundStyle(.secondary)
-                    }
                 }
             }
             .navigationTitle("Settings")
