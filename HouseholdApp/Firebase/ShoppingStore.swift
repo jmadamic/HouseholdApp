@@ -7,10 +7,12 @@ final class ShoppingStore: ObservableObject {
     @Published var errorMessage: String?
 
     private var listener: ListenerRegistration?
+    private var hasCleanedUp = false
     private var db: Firestore { Firestore.firestore() }
 
     func startListening(householdId: String) {
         listener?.remove()
+        hasCleanedUp = false
         listener = db.collection("households").document(householdId)
             .collection("shoppingItems")
             .addSnapshotListener { [weak self] snapshot, error in
@@ -20,6 +22,10 @@ final class ShoppingStore: ObservableObject {
                     self.items = (snapshot?.documents ?? []).compactMap {
                         try? $0.data(as: ShoppingItemDoc.self)
                     }.sorted { ($0.sortOrder, $0.createdAt) < ($1.sortOrder, $1.createdAt) }
+                    if !self.hasCleanedUp {
+                        self.hasCleanedUp = true
+                        self.cleanupOldPurchased(householdId: householdId)
+                    }
                 }
             }
     }
@@ -49,5 +55,19 @@ final class ShoppingStore: ObservableObject {
         updated.isPurchased = false
         updated.purchasedAt = nil
         save(updated, householdId: householdId)
+    }
+
+    // MARK: - Auto-cleanup
+
+    /// Deletes purchased items whose purchasedAt is older than 1 month.
+    /// Called once per session on the first Firestore snapshot.
+    private func cleanupOldPurchased(householdId: String) {
+        guard let cutoff = Calendar.current.date(byAdding: .month, value: -1, to: Date()) else { return }
+        let stale = items.filter {
+            $0.isPurchased && ($0.purchasedAt ?? .distantFuture) < cutoff
+        }
+        for item in stale {
+            delete(item, householdId: householdId)
+        }
     }
 }
