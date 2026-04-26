@@ -7,10 +7,12 @@ final class ChoreStore: ObservableObject {
     @Published var errorMessage: String?
 
     private var listener: ListenerRegistration?
+    private var hasCleanedUp = false
     private var db: Firestore { Firestore.firestore() }
 
     func startListening(householdId: String) {
         listener?.remove()
+        hasCleanedUp = false
         listener = db.collection("households").document(householdId)
             .collection("chores")
             .addSnapshotListener { [weak self] snapshot, error in
@@ -21,6 +23,10 @@ final class ChoreStore: ObservableObject {
                         try? $0.data(as: ChoreDoc.self)
                     }.sorted { ($0.sortOrder, $0.createdAt) < ($1.sortOrder, $1.createdAt) }
                     NotificationManager.shared.rescheduleAll(self.chores)
+                    if !self.hasCleanedUp {
+                        self.hasCleanedUp = true
+                        self.cleanupOldCompleted(householdId: householdId)
+                    }
                 }
             }
     }
@@ -79,5 +85,19 @@ final class ChoreStore: ObservableObject {
         updated.completedAt = nil
         updated.completedByMembers = []
         save(updated, householdId: householdId)
+    }
+
+    // MARK: - Auto-cleanup
+
+    /// Deletes completed chores whose completedAt is older than 1 month.
+    /// Called once per session on the first Firestore snapshot.
+    private func cleanupOldCompleted(householdId: String) {
+        guard let cutoff = Calendar.current.date(byAdding: .month, value: -1, to: Date()) else { return }
+        let stale = chores.filter {
+            $0.isCompleted && ($0.completedAt ?? .distantFuture) < cutoff
+        }
+        for chore in stale {
+            delete(chore, householdId: householdId)
+        }
     }
 }
