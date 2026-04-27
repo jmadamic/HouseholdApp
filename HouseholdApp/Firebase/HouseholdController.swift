@@ -198,6 +198,13 @@ final class HouseholdController: ObservableObject {
         try await batch.commit()
     }
 
+    // ── Member names ──────────────────────────────────────────────────────────
+
+    func saveMemberNames(_ names: [String]) {
+        guard let id = currentHouseholdId else { return }
+        db.collection("households").document(id).updateData(["memberNames": names])
+    }
+
     // ── Rotate invite code (optional future feature) ──────────────────────────
     func rotateInviteCode() async {
         guard let id = currentHouseholdId,

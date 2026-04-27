@@ -116,7 +116,7 @@ class AppSettings: ObservableObject {
     // Member index 0 = first entry, index 1 = second, etc.
 
     @AppStorage("memberNames")
-    private var memberNamesRaw: String = "" {
+    var memberNamesRaw: String = "" {
         willSet { objectWillChange.send() }
     }
 
@@ -199,6 +199,11 @@ class AppSettings: ObservableObject {
     /// All possible assignments: Everyone first, then each member.
     var allAssignments: [MemberAssignment] {
         [.everyone] + members.indices.map { MemberAssignment.member($0) }
+    }
+
+    /// Called when Firestore pushes updated names from another device.
+    func setMembersFromRemote(_ names: [String]) {
+        encodeMemberNames(names)
     }
 
     // ── Migration from old myName/partnerName format ─────────────────────────

@@ -18,48 +18,57 @@ struct HouseholdAppApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if !auth.isSignedIn {
-                    // Anonymous sign-in is in-flight — show a brief spinner.
-                    ProgressView()
-                } else if householdCtrl.household == nil {
-                    // Still setting up (auto-creating household or loading from Firestore).
-                    // Show a spinner; once the household doc arrives we switch to RootView.
-                    ProgressView("Setting up…")
-                        .task {
-                            await householdCtrl.autoCreateIfNeeded()
-                        }
-                } else {
-                    RootView()
-                        .environmentObject(appSettings)
-                        .environmentObject(auth)
-                        .environmentObject(householdCtrl)
-                        .environmentObject(choreStore)
-                        .environmentObject(categoryStore)
-                        .environmentObject(shoppingStore)
-                        .onAppear {
-                            appSettings.migrateFromOldFormat()
-                            if let hid = householdCtrl.household?.id {
-                                choreStore.startListening(householdId: hid)
-                                categoryStore.startListening(householdId: hid)
-                                categoryStore.seedDefaults(householdId: hid)
-                                shoppingStore.startListening(householdId: hid)
-                            }
-                        }
-                        .task {
-                            await NotificationManager.shared.requestPermissionIfNeeded()
-                        }
-                        .onChange(of: householdCtrl.household?.id) { _, newId in
-                            if let hid = newId {
-                                choreStore.startListening(householdId: hid)
-                                categoryStore.startListening(householdId: hid)
-                                categoryStore.seedDefaults(householdId: hid)
-                                shoppingStore.startListening(householdId: hid)
-                            }
-                        }
-                }
-            }
-            .preferredColorScheme(appSettings.appearance.colorScheme)
+            rootContent
+                .preferredColorScheme(appSettings.appearance.colorScheme)
         }
+    }
+
+    @ViewBuilder
+    private var rootContent: some View {
+        if !auth.isSignedIn {
+            ProgressView()
+        } else if householdCtrl.household == nil {
+            ProgressView("Setting up…")
+                .task { await householdCtrl.autoCreateIfNeeded() }
+        } else {
+            RootView()
+                .environmentObject(appSettings)
+                .environmentObject(auth)
+                .environmentObject(householdCtrl)
+                .environmentObject(choreStore)
+                .environmentObject(categoryStore)
+                .environmentObject(shoppingStore)
+                .onAppear(perform: onRootAppear)
+                .task { await NotificationManager.shared.requestPermissionIfNeeded() }
+                .onChange(of: householdCtrl.household?.id) { _, newId in
+                    if let hid = newId { startStores(householdId: hid) }
+                }
+                .onChange(of: householdCtrl.household?.memberNames) { _, remoteNames in
+                    if let remoteNames, remoteNames != appSettings.members {
+                        appSettings.setMembersFromRemote(remoteNames)
+                    }
+                }
+                .onChange(of: appSettings.memberNamesRaw) { _, _ in
+                    householdCtrl.saveMemberNames(appSettings.members)
+                }
+        }
+    }
+
+    private func onRootAppear() {
+        appSettings.migrateFromOldFormat()
+        if let hid = householdCtrl.household?.id {
+            startStores(householdId: hid)
+        }
+        if let remoteNames = householdCtrl.household?.memberNames,
+           remoteNames != appSettings.members {
+            appSettings.setMembersFromRemote(remoteNames)
+        }
+    }
+
+    private func startStores(householdId hid: String) {
+        choreStore.startListening(householdId: hid)
+        categoryStore.startListening(householdId: hid)
+        categoryStore.seedDefaults(householdId: hid)
+        shoppingStore.startListening(householdId: hid)
     }
 }
