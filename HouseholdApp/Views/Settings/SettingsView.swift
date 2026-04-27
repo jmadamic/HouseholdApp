@@ -34,7 +34,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Household Members")
                 } footer: {
-                    Text("Names appear in assignment pickers. Each device sets names locally.")
+                    Text("Names appear in assignment pickers and sync across all devices in your household.")
                 }
 
                 // ── Household Sharing ──────────────────────────────────────────
