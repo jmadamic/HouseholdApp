@@ -25,6 +25,9 @@ struct HouseholdDoc: Identifiable, Codable, Hashable {
     var ownerId: String
 
     var createdAt: Date
+
+    /// Shared member display names. Stored in Firestore so all devices stay in sync.
+    var memberNames: [String]?
 }
 
 /// A /invites/{code} document maps a short invite code → household ID so that
