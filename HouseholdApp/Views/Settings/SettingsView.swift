@@ -100,9 +100,10 @@ struct SettingsView: View {
 
                 // ── Data summary ───────────────────────────────────────────────
                 Section("Data") {
-                    LabeledContent("Chores",         value: "\(choreStore.chores.count)")
-                    LabeledContent("Shopping Items",  value: "\(shoppingStore.items.count)")
-                    LabeledContent("Completed",      value: "\(choreStore.chores.filter(\.isCompleted).count)")
+                    LabeledContent("Chores",    value: "\(choreStore.chores.count)")
+                    LabeledContent("Shopping",  value: "\(shoppingStore.items.count)")
+                    LabeledContent("Completed", value: "\(choreStore.chores.filter(\.isCompleted).count)")
+                    LabeledContent("Purchased", value: "\(shoppingStore.items.filter(\.isPurchased).count)")
                 }
 
                 // ── Danger zone ────────────────────────────────────────────────
