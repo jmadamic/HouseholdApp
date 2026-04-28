@@ -46,11 +46,32 @@ final class HouseholdController: ObservableObject {
                 Task { @MainActor in
                     guard let self else { return }
                     if let error = error {
+                        // Permission denied = our auth UID isn't in this household's
+                        // memberIds (e.g. simulator's anonymous auth was reset but
+                        // the old householdId is still cached in UserDefaults).
+                        // Clear and recreate so the user lands in a working household.
+                        let nsError = error as NSError
+                        if nsError.domain == "FIRFirestoreErrorDomain" && nsError.code == 7 {
+                            print("[HouseholdController] Permission denied for \(householdId) — clearing stale ID")
+                            self.clearCurrentHousehold()
+                            await self.autoCreateIfNeeded()
+                            return
+                        }
                         self.errorMessage = error.localizedDescription
                         return
                     }
                     if let snapshot = snapshot, snapshot.exists {
-                        self.household = try? snapshot.data(as: HouseholdDoc.self)
+                        let doc = try? snapshot.data(as: HouseholdDoc.self)
+                        // Sanity check: if our UID isn't in memberIds, the cached
+                        // household belongs to someone else. Reset it.
+                        if let doc, let uid = Auth.auth().currentUser?.uid,
+                           !doc.memberIds.contains(uid) {
+                            print("[HouseholdController] UID \(uid) not in household memberIds — resetting")
+                            self.clearCurrentHousehold()
+                            await self.autoCreateIfNeeded()
+                            return
+                        }
+                        self.household = doc
                     } else {
                         self.household = nil
                     }

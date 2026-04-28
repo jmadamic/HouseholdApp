@@ -34,6 +34,7 @@ final class ChoreStore: ObservableObject {
     func stopListening() { listener?.remove(); listener = nil }
 
     func save(_ chore: ChoreDoc, householdId: String) {
+        guard !householdId.isEmpty else { return }
         let ref = db.collection("households").document(householdId)
             .collection("chores").document(chore.id)
         try? ref.setData(from: chore)
