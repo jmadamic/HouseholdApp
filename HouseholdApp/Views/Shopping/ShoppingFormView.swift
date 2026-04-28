@@ -51,23 +51,6 @@ struct ShoppingFormView: View {
                     }
                 }
 
-                Section("Type") {
-                    Picker("Item type", selection: $itemType) {
-                        Text("None").tag("")
-                        ForEach(appSettings.itemTypes, id: \.self) { t in
-                            AppIconLabel(title: t, icon: appSettings.iconForItemType(t)).tag(t)
-                        }
-                    }
-                    Button { showingAddType = true } label: {
-                        Label("Add New Type...", systemImage: "plus.circle").font(.subheadline)
-                    }
-                    if !itemType.isEmpty {
-                        Button { typeToEdit = itemType } label: {
-                            Label("Edit \"\(itemType)\"", systemImage: "pencil").font(.subheadline)
-                        }
-                    }
-                }
-
                 Section("Store") {
                     Picker("Store", selection: $store) {
                         Text("None").tag("")
@@ -81,6 +64,23 @@ struct ShoppingFormView: View {
                     if !store.isEmpty {
                         Button { storeToEdit = store } label: {
                             Label("Edit \"\(store)\"", systemImage: "pencil").font(.subheadline)
+                        }
+                    }
+                }
+
+                Section("Type") {
+                    Picker("Item type", selection: $itemType) {
+                        Text("None").tag("")
+                        ForEach(appSettings.itemTypes, id: \.self) { t in
+                            AppIconLabel(title: t, icon: appSettings.iconForItemType(t)).tag(t)
+                        }
+                    }
+                    Button { showingAddType = true } label: {
+                        Label("Add New Type...", systemImage: "plus.circle").font(.subheadline)
+                    }
+                    if !itemType.isEmpty {
+                        Button { typeToEdit = itemType } label: {
+                            Label("Edit \"\(itemType)\"", systemImage: "pencil").font(.subheadline)
                         }
                     }
                 }
