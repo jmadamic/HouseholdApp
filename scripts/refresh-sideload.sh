@@ -1,26 +1,22 @@
 #!/bin/bash
 # refresh-sideload.sh
 # Rebuilds HouseholdApp and reinstalls it on all paired iPhones.
-# Run weekly to keep the 7-day sideload certificate fresh.
+# Runs via launchd every 10 min on Sundays 9am-9pm; retries devices that
+# weren't unlocked/available on previous attempts.
 #
-# Prerequisites:
-#   - Both phones unlocked and connected (USB or wireless via Xcode)
-#   - Apple ID signed into Xcode (Settings → Accounts)
-#   - Team selected in HouseholdApp target → Signing & Capabilities
-#
-# Building per-device with -allowProvisioningDeviceRegistration ensures both
-# iPhones get added to the provisioning profile; a single generic/platform=iOS
-# build doesn't always include both, leading to ApplicationVerificationFailed
-# on install.
+# State tracking: stamps /tmp/householdapp-refresh.<UDID>.stamp on successful
+# install. Skips any device already stamped within the past 6 days, so the
+# weekly cycle re-installs but mid-week retries on a failed device don't
+# unnecessarily reinstall on the working one.
 
 set -e
 
 PROJECT_DIR="/Users/jordanadamich/Coding/HouseholdApp"
 SCHEME="HouseholdApp"
+STAMP_TTL_SECS=$((6 * 24 * 3600))  # 6 days
 
-# ── Device IDs ────────────────────────────────────────────────────────────────
-# xcodebuild uses ECIDs; devicectl uses a different UDID. Both are listed here.
-# Format: "<friendly name>:<ECID>:<devicectl UDID>"
+# ── Devices ───────────────────────────────────────────────────────────────────
+# Format: "<friendly name>:<ECID (for xcodebuild)>:<devicectl UDID>"
 DEVICES=(
   "Jordan iPhone:00008101-000838881AE1001E:3A79D817-0BFF-5B15-AC01-2C48628788C4"
   "Wife iPhone:00008140-001A74A92678801C:8F9616CB-0E07-5556-B119-18859D9433F2"
@@ -30,34 +26,60 @@ DERIVED_DATA_APP="$HOME/Library/Developer/Xcode/DerivedData/HouseholdApp-btmbjbn
 
 cd "$PROJECT_DIR"
 
+ts() { date "+%Y-%m-%d %H:%M:%S"; }
+
+ANY_PENDING=0
+
 for entry in "${DEVICES[@]}"; do
   IFS=":" read -r NAME ECID UDID <<< "$entry"
+  STAMP="/tmp/householdapp-refresh.$UDID.stamp"
+
+  # Skip if recently stamped successful
+  if [ -f "$STAMP" ]; then
+    AGE=$(($(date +%s) - $(stat -f %m "$STAMP")))
+    if [ "$AGE" -lt "$STAMP_TTL_SECS" ]; then
+      echo "[$(ts)] $NAME: already refreshed $((AGE/3600))h ago, skipping"
+      continue
+    fi
+  fi
 
   echo ""
-  echo "═════════════════════════════════════════════════════════════════"
-  echo "▶ $NAME (ECID=$ECID, UDID=$UDID)"
-  echo "═════════════════════════════════════════════════════════════════"
+  echo "[$(ts)] ═══ $NAME (ECID=$ECID) ═══"
 
-  echo "  Checking device availability..."
   STATUS=$(xcrun devicectl list devices 2>&1 | grep "$UDID" | grep -oE "available|unavailable|connected" | head -1)
   if [ "$STATUS" != "available" ] && [ "$STATUS" != "connected" ]; then
-    echo "  ⚠️  $NAME is $STATUS — skipping. Unlock the phone and re-run."
+    echo "[$(ts)] $NAME is $STATUS — will retry next run"
+    ANY_PENDING=1
     continue
   fi
 
-  echo "  Building (this also registers the device on the provisioning profile)..."
-  xcodebuild \
-    -project "HouseholdApp.xcodeproj" \
-    -scheme "$SCHEME" \
-    -destination "platform=iOS,id=$ECID" \
-    -configuration Debug \
-    -allowProvisioningUpdates \
-    -allowProvisioningDeviceRegistration \
-    build 2>&1 | tail -5 | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+  echo "[$(ts)] Building..."
+  if ! xcodebuild \
+      -project "HouseholdApp.xcodeproj" \
+      -scheme "$SCHEME" \
+      -destination "platform=iOS,id=$ECID" \
+      -configuration Debug \
+      -allowProvisioningUpdates \
+      -allowProvisioningDeviceRegistration \
+      build > /tmp/householdapp-build.log 2>&1; then
+    echo "[$(ts)] $NAME: BUILD FAILED — see /tmp/householdapp-build.log"
+    ANY_PENDING=1
+    continue
+  fi
 
-  echo "  Installing..."
-  xcrun devicectl device install app --device "$UDID" "$DERIVED_DATA_APP" 2>&1 | tail -3
+  echo "[$(ts)] Installing..."
+  if xcrun devicectl device install app --device "$UDID" "$DERIVED_DATA_APP" > /tmp/householdapp-install.log 2>&1; then
+    touch "$STAMP"
+    echo "[$(ts)] $NAME: ✅ installed"
+  else
+    echo "[$(ts)] $NAME: install failed — see /tmp/householdapp-install.log"
+    ANY_PENDING=1
+  fi
 done
 
-echo ""
-echo "✅ Done"
+if [ "$ANY_PENDING" -eq 1 ]; then
+  echo "[$(ts)] Some devices pending — will retry next scheduled run"
+  exit 1
+fi
+
+echo "[$(ts)] ✅ All devices refreshed"
