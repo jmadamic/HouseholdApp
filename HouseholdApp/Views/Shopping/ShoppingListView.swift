@@ -69,8 +69,13 @@ struct ShoppingListView: View {
                 .background(Color(.systemGroupedBackground))
 
                 if filteredItems.isEmpty {
-                    ContentUnavailableView("No Items", systemImage: "cart",
-                                          description: Text("Tap + to add your first shopping item."))
+                    if shoppingStore.items.isEmpty {
+                        ContentUnavailableView("No Items", systemImage: "cart",
+                                              description: Text("Tap + to add your first shopping item."))
+                    } else {
+                        ContentUnavailableView("Nothing Here", systemImage: "line.3.horizontal.decrease.circle",
+                                              description: Text("No items for \(appSettings.memberName(at: filterIndex)). Try the All tab."))
+                    }
                 } else {
                     List {
                         ForEach(sectionKeys, id: \.self) { key in
@@ -135,13 +140,17 @@ struct ShoppingListView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     if !purchased.isEmpty {
-                        Button { showingClearAlert = true } label: { Text("Clear").font(.subheadline) }
+                        Button(role: .destructive) { showingClearAlert = true } label: {
+                            Text("Clear").font(.subheadline)
+                        }
+                        .accessibilityLabel("Clear purchased items")
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { showingAddItem = true } label: {
                         Image(systemName: "plus.circle.fill").font(.title2)
                     }
+                    .accessibilityLabel("Add Shopping Item")
                 }
             }
             .sheet(isPresented: $showingAddItem) { ShoppingFormView(item: nil) }

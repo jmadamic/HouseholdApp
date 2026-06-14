@@ -38,8 +38,13 @@ struct ChoreListView: View {
             VStack(spacing: 0) {
                 filterBar
                 if filteredChores.isEmpty {
-                    ContentUnavailableView("No Chores", systemImage: "checkmark.seal.fill",
-                                          description: Text("Tap + to add your first chore."))
+                    if choreStore.chores.isEmpty {
+                        ContentUnavailableView("No Chores", systemImage: "checkmark.seal.fill",
+                                              description: Text("Tap + to add your first chore."))
+                    } else {
+                        ContentUnavailableView("Nothing Here", systemImage: "line.3.horizontal.decrease.circle",
+                                              description: Text("No chores for \(appSettings.memberName(at: filterIndex)). Try the All tab."))
+                    }
                 } else {
                     List {
                         ForEach(sections, id: \.self) { section in
@@ -69,6 +74,7 @@ struct ChoreListView: View {
                     Button { showingAddChore = true } label: {
                         Image(systemName: "plus.circle.fill").font(.title2)
                     }
+                    .accessibilityLabel("Add Chore")
                 }
             }
             .sheet(isPresented: $showingAddChore)   { ChoreFormView(chore: nil) }
