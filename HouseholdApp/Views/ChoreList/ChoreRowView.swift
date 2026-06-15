@@ -41,10 +41,30 @@ struct ChoreRowView: View {
         }
         .padding(.vertical, 2)
         .opacity(chore.isCompleted ? 0.6 : 1.0)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    /// One sentence VoiceOver summary: title, status, due date, assignee.
+    private var accessibilitySummary: String {
+        var parts = [chore.titleSafe]
+        parts.append(chore.isCompleted ? "completed" : "not completed")
+        if let label = chore.dueDateLabel {
+            parts.append(chore.isOverdue ? "overdue, was due \(label)" : "due \(label)")
+        }
+        let indices = chore.assignedToMembers.sorted()
+        if indices.isEmpty {
+            parts.append("assigned to everyone")
+        } else {
+            let names = indices.map { appSettings.memberName(at: $0) }.joined(separator: " and ")
+            parts.append("assigned to \(names)")
+        }
+        return parts.joined(separator: ", ")
     }
 
     private var completionButton: some View {
         Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { checkAnimating = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 checkAnimating = false
@@ -59,8 +79,11 @@ struct ChoreRowView: View {
                 .font(.title2)
                 .foregroundStyle(chore.isCompleted ? .green : .secondary)
                 .scaleEffect(checkAnimating ? 1.3 : 1.0)
+                .frame(width: 44, height: 44)   // minimum comfortable tap target
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(chore.isCompleted ? "Mark \(chore.titleSafe) incomplete" : "Mark \(chore.titleSafe) complete")
     }
 
     private func categoryBadge(for cat: CategoryDoc) -> some View {
@@ -91,7 +114,7 @@ struct ChoreRowView: View {
                         Circle().fill(appSettings.memberColor(at: idx)).frame(width: 7, height: 7)
                     }
                     if indices.count > 3 {
-                        Text("+\(indices.count - 3)").font(.system(size: 8)).foregroundStyle(.secondary)
+                        Text("+\(indices.count - 3)").font(.caption2).foregroundStyle(.secondary)
                     }
                 }
             }

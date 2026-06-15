@@ -15,6 +15,7 @@ struct ShoppingRowView: View {
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { checkAnimating = true }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                     checkAnimating = false
@@ -29,8 +30,11 @@ struct ShoppingRowView: View {
                     .font(.title2)
                     .foregroundStyle(item.isPurchased ? .green : .secondary)
                     .scaleEffect(checkAnimating ? 1.3 : 1.0)
+                    .frame(width: 44, height: 44)   // minimum comfortable tap target
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(item.isPurchased ? "Mark \(item.nameSafe) not purchased" : "Mark \(item.nameSafe) purchased")
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -39,9 +43,9 @@ struct ShoppingRowView: View {
                         .strikethrough(item.isPurchased, color: .secondary)
                         .foregroundStyle(item.isPurchased ? .secondary : .primary)
                     if let qty = item.quantitySafe {
-                        Text(qty).font(.caption2.weight(.medium)).foregroundStyle(.white)
+                        Text(qty).font(.caption2.weight(.semibold)).foregroundStyle(.white)
                             .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(.blue.opacity(0.7), in: Capsule())
+                            .background(.blue, in: Capsule())   // solid for WCAG contrast
                     }
                 }
                 if let t = item.itemType, !t.isEmpty {
@@ -63,6 +67,24 @@ struct ShoppingRowView: View {
         }
         .padding(.vertical, 2)
         .opacity(item.isPurchased ? 0.6 : 1.0)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    /// One sentence VoiceOver summary: name, quantity, status, store, assignee.
+    private var accessibilitySummary: String {
+        var parts = [item.nameSafe]
+        if let qty = item.quantitySafe { parts.append("quantity \(qty)") }
+        parts.append(item.isPurchased ? "purchased" : "not purchased")
+        if let store = item.store, !store.isEmpty { parts.append("at \(store)") }
+        let indices = item.assignedToMembers.sorted()
+        if indices.isEmpty {
+            parts.append("for everyone")
+        } else {
+            let names = indices.map { appSettings.memberName(at: $0) }.joined(separator: " and ")
+            parts.append("for \(names)")
+        }
+        return parts.joined(separator: ", ")
     }
 
     private var assigneeView: some View {
@@ -79,7 +101,7 @@ struct ShoppingRowView: View {
                         Circle().fill(appSettings.memberColor(at: idx)).frame(width: 7, height: 7)
                     }
                     if indices.count > 3 {
-                        Text("+\(indices.count-3)").font(.system(size: 8)).foregroundStyle(.secondary)
+                        Text("+\(indices.count-3)").font(.caption2).foregroundStyle(.secondary)
                     }
                 }
             }

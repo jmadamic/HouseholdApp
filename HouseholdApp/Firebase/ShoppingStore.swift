@@ -33,6 +33,7 @@ final class ShoppingStore: ObservableObject {
     func stopListening() { listener?.remove(); listener = nil }
 
     func save(_ item: ShoppingItemDoc, householdId: String) {
+        guard !householdId.isEmpty else { return }
         let ref = db.collection("households").document(householdId)
             .collection("shoppingItems").document(item.id)
         try? ref.setData(from: item)
