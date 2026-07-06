@@ -69,6 +69,9 @@ service cloud.firestore {
       match /shoppingItems/{itemId} {
         allow read, write: if isMember(householdId);
       }
+      match /meals/{mealId} {
+        allow read, write: if isMember(householdId);
+      }
     }
 
     // ── invites/{code} ─────────────────────────────────────────────────────

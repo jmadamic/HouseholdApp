@@ -16,6 +16,7 @@ A household chore app for **any number of people**, built with **SwiftUI + Core 
 | **Completion tracking** | Per-person history stored for every completion |
 | **CloudKit Sharing** | Each person uses their own Apple ID. One person invites the others (up to 100) — no shared account needed |
 | **Shopping list** | Separate tab for groceries/household items — group by store or by type, with assignee support. Stores and item types are fully editable with custom icons |
+| **Meal planning** | Plan meals by day and type (breakfast, brunch, lunch, dinner, snack, dessert) with an optional dish name and assigned cook(s). Track ingredients you have vs. need — missing ones can be added to the grocery list in one tap, and each grocery item links back to its meal |
 | **Easy UI** | Swipe to complete or delete; tap to edit; colour-coded urgency sections |
 
 ---
@@ -54,7 +55,7 @@ HouseholdApp/
     │   └── Color+Hex.swift             ← Color ↔ "#RRGGBB" hex string conversion
     │
     └── Views/
-        ├── RootView.swift              ← TabView: Chores | Shopping | Settings
+        ├── RootView.swift              ← TabView: Chores | Shopping | Meals | Settings (+ TabRouter for cross-tab links)
         ├── ChoreList/
         │   ├── ChoreListView.swift     ← Main list, sections, filter bar, swipe actions
         │   └── ChoreRowView.swift      ← Single row: checkbox, badges, due label, assignee icon
@@ -69,6 +70,10 @@ HouseholdApp/
         │   ├── ShoppingFormView.swift  ← Add/edit sheet with inline store/type management (add/edit)
         │   ├── StoreFormView.swift     ← Add/edit/delete store: name, icon picker
         │   └── ItemTypeFormView.swift  ← Add/edit/delete item type: name, icon picker
+        ├── Meals/
+        │   ├── MealListView.swift      ← Meals grouped by day, member filter, swipe actions
+        │   ├── MealRowView.swift       ← Single row: check-off, meal-type chip, ingredient readiness
+        │   └── MealFormView.swift      ← Add/edit sheet: day, type, cook(s), ingredients → grocery list
         └── Settings/
             └── SettingsView.swift      ← Person names, household sharing, data summary
 ```

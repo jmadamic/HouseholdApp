@@ -6,6 +6,7 @@ struct ShoppingRowView: View {
     @EnvironmentObject private var appSettings:   AppSettings
     @EnvironmentObject private var shoppingStore: ShoppingStore
     @EnvironmentObject private var householdCtrl: HouseholdController
+    @EnvironmentObject private var router:        TabRouter
 
     let item: ShoppingItemDoc
     @State private var checkAnimating = false
@@ -48,11 +49,27 @@ struct ShoppingRowView: View {
                             .background(.blue, in: Capsule())   // solid for WCAG contrast
                     }
                 }
-                if let t = item.itemType, !t.isEmpty {
-                    AppIconLabel(title: t, icon: appSettings.iconForItemType(t))
-                        .font(.caption2.weight(.medium)).foregroundStyle(.secondary)
-                        .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(Color.secondary.opacity(0.12), in: Capsule())
+                HStack(spacing: 6) {
+                    if let t = item.itemType, !t.isEmpty {
+                        AppIconLabel(title: t, icon: appSettings.iconForItemType(t))
+                            .font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.12), in: Capsule())
+                    }
+                    if let mealId = item.mealId, let mealName = item.mealName {
+                        // Link back to the meal this ingredient belongs to.
+                        Button {
+                            router.openMeal(mealId)
+                        } label: {
+                            Label(mealName, systemImage: "fork.knife")
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(.orange)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(.orange.opacity(0.12), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Open meal \(mealName)")
+                    }
                 }
             }
 

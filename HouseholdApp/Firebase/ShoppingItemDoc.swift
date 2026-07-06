@@ -12,6 +12,10 @@ struct ShoppingItemDoc: Codable, Identifiable {
     var notes: String?
     var sortOrder: Int32
     var createdAt: Date
+    /// Set when this item was added from a planned meal's ingredient list.
+    /// Optional + defaulted so pre-meal documents and call sites are unaffected.
+    var mealId: String? = nil
+    var mealName: String? = nil
 
     var nameSafe: String       { name }
     var storeGroupKey: String  { store?.isEmpty == false ? store! : "No Store" }
