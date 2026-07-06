@@ -10,6 +10,7 @@ struct SettingsView: View {
     @EnvironmentObject private var householdCtrl: HouseholdController
     @EnvironmentObject private var choreStore:    ChoreStore
     @EnvironmentObject private var shoppingStore: ShoppingStore
+    @EnvironmentObject private var mealStore:     MealStore
 
     @State private var showingDeleteAlert = false
     @State private var showingAddMember   = false
@@ -102,6 +103,7 @@ struct SettingsView: View {
                 Section("Data") {
                     LabeledContent("Chores",    value: "\(choreStore.chores.count)")
                     LabeledContent("Shopping",  value: "\(shoppingStore.items.count)")
+                    LabeledContent("Meals",     value: "\(mealStore.meals.count)")
                     LabeledContent("Completed", value: "\(choreStore.chores.filter(\.isCompleted).count)")
                     LabeledContent("Purchased", value: "\(shoppingStore.items.filter(\.isPurchased).count)")
                 }
@@ -246,5 +248,6 @@ struct SettingsView: View {
         guard let hid = householdCtrl.household?.id else { return }
         choreStore.chores.forEach   { choreStore.delete($0,    householdId: hid) }
         shoppingStore.items.forEach { shoppingStore.delete($0, householdId: hid) }
+        mealStore.meals.forEach     { mealStore.delete($0,     householdId: hid) }
     }
 }

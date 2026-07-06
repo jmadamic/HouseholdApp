@@ -11,6 +11,8 @@ struct HouseholdAppApp: App {
     @StateObject private var choreStore        = ChoreStore()
     @StateObject private var categoryStore     = CategoryStore()
     @StateObject private var shoppingStore     = ShoppingStore()
+    @StateObject private var mealStore         = MealStore()
+    @StateObject private var router            = TabRouter()
 
     init() {
         FirebaseApp.configure()
@@ -38,6 +40,8 @@ struct HouseholdAppApp: App {
                 .environmentObject(choreStore)
                 .environmentObject(categoryStore)
                 .environmentObject(shoppingStore)
+                .environmentObject(mealStore)
+                .environmentObject(router)
                 .onAppear(perform: onRootAppear)
                 .task { await NotificationManager.shared.requestPermissionIfNeeded() }
                 .onChange(of: householdCtrl.household?.id) { _, newId in
@@ -70,5 +74,6 @@ struct HouseholdAppApp: App {
         categoryStore.startListening(householdId: hid)
         categoryStore.seedDefaults(householdId: hid)
         shoppingStore.startListening(householdId: hid)
+        mealStore.startListening(householdId: hid)
     }
 }
