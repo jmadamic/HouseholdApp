@@ -290,6 +290,42 @@ class AppSettings: ObservableObject {
         storeIconsRaw = encodeIcons(icons)
     }
 
+    // ── Packing: user-addable sections ─────────────────────────────────────────
+
+    /// "Food" is special: ingredients from meals tied to a trip land there.
+    static let defaultPackingSections = ["Clothing", "Food", "Toiletries", "Electronics", "Documents", "Other"]
+
+    @AppStorage("customPackingSections")
+    private var customPackingSectionsRaw: String = "" {
+        willSet { objectWillChange.send() }
+    }
+
+    var packingSections: [String] {
+        let custom = customPackingSectionsRaw
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        return Self.defaultPackingSections + custom.filter { !Self.defaultPackingSections.contains($0) }
+    }
+
+    func addPackingSection(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, !packingSections.contains(trimmed) else { return }
+        customPackingSectionsRaw += customPackingSectionsRaw.isEmpty ? trimmed : ",\(trimmed)"
+    }
+
+    func iconForPackingSection(_ name: String) -> String {
+        switch name {
+        case "Clothing":    return "tshirt.fill"
+        case "Food":        return "fork.knife"
+        case "Toiletries":  return "shower.fill"
+        case "Electronics": return "cable.connector"
+        case "Documents":   return "doc.text.fill"
+        case "Other":       return "shippingbox.fill"
+        default:            return "duffle.bag.fill"
+        }
+    }
+
     // ── Shopping: user-addable item types ──────────────────────────────────────
 
     static let defaultItemTypes = ["Food", "Furniture", "Maintenance", "Household", "Personal Care"]

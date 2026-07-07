@@ -14,6 +14,9 @@ struct ChoreDoc: Codable, Identifiable {
     var categoryId: String?
     var sortOrder: Int32
     var createdAt: Date
+    /// Set when this chore is tied to a trip/event (e.g. "turn off water
+    /// heater before leaving"). Optional + defaulted for backward compat.
+    var tripId: String? = nil
 
     // Computed display helpers (same logic as old CoreDataHelpers)
     var titleSafe: String { title }

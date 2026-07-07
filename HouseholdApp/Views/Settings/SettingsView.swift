@@ -11,6 +11,8 @@ struct SettingsView: View {
     @EnvironmentObject private var choreStore:    ChoreStore
     @EnvironmentObject private var shoppingStore: ShoppingStore
     @EnvironmentObject private var mealStore:     MealStore
+    @EnvironmentObject private var tripStore:     TripStore
+    @EnvironmentObject private var packingStore:  PackingStore
 
     @State private var showingDeleteAlert = false
     @State private var showingAddMember   = false
@@ -104,6 +106,7 @@ struct SettingsView: View {
                     LabeledContent("Chores",    value: "\(choreStore.chores.count)")
                     LabeledContent("Shopping",  value: "\(shoppingStore.items.count)")
                     LabeledContent("Meals",     value: "\(mealStore.meals.count)")
+                    LabeledContent("Trips",     value: "\(tripStore.trips.count)")
                     LabeledContent("Completed", value: "\(choreStore.chores.filter(\.isCompleted).count)")
                     LabeledContent("Purchased", value: "\(shoppingStore.items.filter(\.isPurchased).count)")
                 }
@@ -249,5 +252,7 @@ struct SettingsView: View {
         choreStore.chores.forEach   { choreStore.delete($0,    householdId: hid) }
         shoppingStore.items.forEach { shoppingStore.delete($0, householdId: hid) }
         mealStore.meals.forEach     { mealStore.delete($0,     householdId: hid) }
+        tripStore.trips.forEach     { tripStore.delete($0,     householdId: hid) }
+        packingStore.items.forEach  { packingStore.delete($0,  householdId: hid) }
     }
 }
