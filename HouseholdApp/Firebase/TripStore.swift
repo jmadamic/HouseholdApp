@@ -36,7 +36,8 @@ final class TripStore: ObservableObject {
         guard !householdId.isEmpty else { return }
         let ref = db.collection("households").document(householdId)
             .collection("trips").document(trip.id)
-        try? ref.setData(from: trip)
+        do { try ref.setData(from: trip) }
+        catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
     }
 
     /// Deletes a trip and all of its packing items (cascade).

@@ -51,7 +51,7 @@ struct ShoppingListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     Picker("Group by", selection: $groupBy) {
                         ForEach(ShoppingGroupBy.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                     }
@@ -65,7 +65,7 @@ struct ShoppingListView: View {
                     }
                     .pickerStyle(.segmented)
                 }
-                .padding(.horizontal).padding(.vertical, 8)
+                .padding(.horizontal).padding(.vertical, 5)
                 .background(Color(.systemGroupedBackground))
 
                 if filteredItems.isEmpty {
@@ -134,6 +134,7 @@ struct ShoppingListView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
+                    .listSectionSpacing(.compact)
                 }
             }
             .navigationTitle("Shopping")

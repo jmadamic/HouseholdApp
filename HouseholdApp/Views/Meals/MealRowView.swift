@@ -28,7 +28,6 @@ struct MealRowView: View {
             Spacer()
             assigneeView
         }
-        .padding(.vertical, 2)
         .opacity(meal.isCompleted ? 0.6 : 1.0)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilitySummary)

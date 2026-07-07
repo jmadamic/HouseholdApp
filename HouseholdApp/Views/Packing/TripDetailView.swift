@@ -126,6 +126,7 @@ struct TripDetailView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .listSectionSpacing(.compact)
         .navigationTitle(trip.nameSafe)
         .navigationBarTitleDisplayMode(.inline)
         .alert("New Section", isPresented: $showingAddSection) {

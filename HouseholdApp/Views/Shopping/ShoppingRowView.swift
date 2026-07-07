@@ -82,7 +82,6 @@ struct ShoppingRowView: View {
                 assigneeView
             }
         }
-        .padding(.vertical, 2)
         .opacity(item.isPurchased ? 0.6 : 1.0)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilitySummary)

@@ -1,3 +1,12 @@
+// ChoreDoc.swift
+// Firestore-backed model for a chore.
+// Lives at /households/{id}/chores/{choreId}.
+//
+// Due dates support four modes (specific date / week / month / none) and a
+// rolling repeat model: completing a repeating chore advances dueDate
+// instead of archiving it. Section placement for the list UI is computed
+// here (overdue / today / this week / …).
+
 import Foundation
 
 struct ChoreDoc: Codable, Identifiable {

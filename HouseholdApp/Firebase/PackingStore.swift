@@ -30,7 +30,8 @@ final class PackingStore: ObservableObject {
         guard !householdId.isEmpty else { return }
         let ref = db.collection("households").document(householdId)
             .collection("packingItems").document(item.id)
-        try? ref.setData(from: item)
+        do { try ref.setData(from: item) }
+        catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
     }
 
     func delete(_ item: PackingItemDoc, householdId: String) {

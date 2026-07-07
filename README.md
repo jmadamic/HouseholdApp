@@ -208,6 +208,7 @@ Categories: `name`, `colorHex`, `iconName`, `sortOrder`. Completion logs: `chore
 - Household creation requires you to be the sole member and owner.
 - Joining (self-add to `memberIds`) may touch **only** that field.
 - Invite codes can only be created by the household owner (same-batch creation) or an existing member (rotation) — prevents invite forgery.
+- Invites allow `get` by exact code only — `list` is denied, so codes can't be enumerated by querying the collection.
 - Every subcollection (`chores`, `categories`, `completions`, `shoppingItems`, `meals`, `trips`, `packingItems`) is member-only.
 
 ---

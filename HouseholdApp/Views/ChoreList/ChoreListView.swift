@@ -66,6 +66,7 @@ struct ChoreListView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
+                    .listSectionSpacing(.compact)
                 }
             }
             .navigationTitle("Chores")
@@ -96,7 +97,7 @@ struct ChoreListView: View {
             }
         }
         .pickerStyle(.segmented)
-        .padding(.horizontal).padding(.vertical, 8)
+        .padding(.horizontal).padding(.vertical, 5)
         .background(Color(.systemGroupedBackground))
     }
 
