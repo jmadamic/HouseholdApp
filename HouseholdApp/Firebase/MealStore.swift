@@ -1,3 +1,10 @@
+// MealStore.swift
+// Real-time Firestore store for /households/{id}/meals.
+//
+// Meals are sorted by day, then meal-type order (breakfast → dessert).
+// Meals planned more than 1 month in the past are deleted once per session
+// on the first snapshot. Write failures surface on `errorMessage`.
+
 import Foundation
 import FirebaseFirestore
 
@@ -39,7 +46,8 @@ final class MealStore: ObservableObject {
         guard !householdId.isEmpty else { return }
         let ref = db.collection("households").document(householdId)
             .collection("meals").document(meal.id)
-        try? ref.setData(from: meal)
+        do { try ref.setData(from: meal) }
+        catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
     }
 
     func delete(_ meal: MealDoc, householdId: String) {

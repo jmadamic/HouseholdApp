@@ -1,3 +1,10 @@
+// CategoryStore.swift
+// Real-time Firestore store for /households/{id}/categories.
+//
+// Seeds six default categories the first time a household loads
+// (seedDefaults is a no-op when any categories exist). Write failures
+// surface on `errorMessage`.
+
 import Foundation
 import FirebaseFirestore
 
@@ -51,9 +58,11 @@ final class CategoryStore: ObservableObject {
     }
 
     func save(_ category: CategoryDoc, householdId: String) {
+        guard !householdId.isEmpty else { return }
         let ref = db.collection("households").document(householdId)
             .collection("categories").document(category.id)
-        try? ref.setData(from: category)
+        do { try ref.setData(from: category) }
+        catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
     }
 
     func delete(_ category: CategoryDoc, householdId: String) {

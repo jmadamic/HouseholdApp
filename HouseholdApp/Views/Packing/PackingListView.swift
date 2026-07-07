@@ -45,6 +45,7 @@ struct PackingListView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
+        .listSectionSpacing(.compact)
                 }
             }
             .navigationTitle("Packing")
@@ -99,7 +100,6 @@ struct PackingListView: View {
                     .foregroundStyle(packed == items.count ? .green : .secondary)
             }
         }
-        .padding(.vertical, 2)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(trip.nameSafe), \(trip.dateRangeLabel), \(packed) of \(items.count) items packed")
     }

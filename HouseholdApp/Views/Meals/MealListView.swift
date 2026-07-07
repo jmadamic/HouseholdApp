@@ -85,6 +85,7 @@ struct MealListView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
+                    .listSectionSpacing(.compact)
                 }
             }
             .navigationTitle("Meals")
@@ -126,7 +127,7 @@ struct MealListView: View {
             }
         }
         .pickerStyle(.segmented)
-        .padding(.horizontal).padding(.vertical, 8)
+        .padding(.horizontal).padding(.vertical, 5)
         .background(Color(.systemGroupedBackground))
     }
 

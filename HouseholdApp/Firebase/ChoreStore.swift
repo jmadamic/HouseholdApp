@@ -1,3 +1,14 @@
+// ChoreStore.swift
+// Real-time Firestore store for /households/{id}/chores.
+//
+// Lifecycle: HouseholdAppApp.startStores opens the snapshot listener when a
+// household loads; every remote or local change re-publishes `chores` and
+// reschedules local due-date notifications. Completed chores older than
+// 1 month are deleted once per session on the first snapshot.
+//
+// Writes are latency-compensated by Firestore's local cache — saves appear
+// instantly and sync when online. Write failures surface on `errorMessage`.
+
 import Foundation
 import FirebaseFirestore
 
@@ -37,7 +48,8 @@ final class ChoreStore: ObservableObject {
         guard !householdId.isEmpty else { return }
         let ref = db.collection("households").document(householdId)
             .collection("chores").document(chore.id)
-        try? ref.setData(from: chore)
+        do { try ref.setData(from: chore) }
+        catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
         NotificationManager.shared.schedule(chore)   // immediate local update before snapshot arrives
     }
 
@@ -75,7 +87,8 @@ final class ChoreStore: ObservableObject {
         )
         let logRef = db.collection("households").document(householdId)
             .collection("completions").document(log.id)
-        try? logRef.setData(from: log)
+        do { try logRef.setData(from: log) }
+        catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
 
         save(updated, householdId: householdId)
     }

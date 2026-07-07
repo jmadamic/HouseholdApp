@@ -39,7 +39,6 @@ struct ChoreRowView: View {
                 assigneeView
             }
         }
-        .padding(.vertical, 2)
         .opacity(chore.isCompleted ? 0.6 : 1.0)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilitySummary)

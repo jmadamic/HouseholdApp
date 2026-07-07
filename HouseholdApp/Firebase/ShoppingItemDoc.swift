@@ -1,3 +1,7 @@
+// ShoppingItemDoc.swift
+// Firestore-backed model for a shopping-list item.
+// Lives at /households/{id}/shoppingItems/{itemId}.
+
 import Foundation
 
 struct ShoppingItemDoc: Codable, Identifiable {

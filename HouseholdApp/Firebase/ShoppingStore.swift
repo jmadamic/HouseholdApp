@@ -1,3 +1,11 @@
+// ShoppingStore.swift
+// Real-time Firestore store for /households/{id}/shoppingItems.
+//
+// Purchased items older than 1 month are deleted once per session on the
+// first snapshot. Items created from a meal's ingredient list carry
+// mealId/mealName (see MealFormView) so the shopping row can link back.
+// Write failures surface on `errorMessage`.
+
 import Foundation
 import FirebaseFirestore
 
@@ -36,7 +44,8 @@ final class ShoppingStore: ObservableObject {
         guard !householdId.isEmpty else { return }
         let ref = db.collection("households").document(householdId)
             .collection("shoppingItems").document(item.id)
-        try? ref.setData(from: item)
+        do { try ref.setData(from: item) }
+        catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
     }
 
     func delete(_ item: ShoppingItemDoc, householdId: String) {
