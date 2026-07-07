@@ -72,6 +72,12 @@ service cloud.firestore {
       match /meals/{mealId} {
         allow read, write: if isMember(householdId);
       }
+      match /trips/{tripId} {
+        allow read, write: if isMember(householdId);
+      }
+      match /packingItems/{itemId} {
+        allow read, write: if isMember(householdId);
+      }
     }
 
     // ── invites/{code} ─────────────────────────────────────────────────────

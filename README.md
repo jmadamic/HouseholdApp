@@ -17,6 +17,7 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 | **Household sharing** | One person creates the household; others join with a 6-character invite code from Settings. Changes sync to every device in real time |
 | **Shared member names** | Member names are stored on the household document, so renaming someone updates every device |
 | **Shopping list** | Separate tab for groceries/household items — group by store or by type, with assignee support. Stores and item types are fully editable with custom icons |
+| **Packing lists** | Create trips/events with dates and pack per-section (Clothing, Food, Toiletries, custom…). Meals tied to a trip auto-add their ingredients to the Food section; chores can be tied to a trip too (e.g. "turn off water heater before leaving") |
 | **Meal planning** | Plan meals by day and type (breakfast, brunch, lunch, dinner, snack, dessert) with an optional dish name and assigned cook(s). Track ingredients you have vs. need — missing ones can be added to the grocery list in one tap, and each grocery item links back to its meal |
 | **Local notifications** | Due-date reminders at 9 am (day-of and/or day-before), filterable to my/shared/all chores in Settings |
 | **Auto-cleanup** | Completed chores, purchased items, and past meals are deleted automatically after 1 month |
@@ -67,11 +68,12 @@ HouseholdApp/
     │   └── NotificationManager.swift   ← Local due-date reminders (UNUserNotificationCenter)
     │
     └── Views/
-        ├── RootView.swift              ← TabView: Chores | Shopping | Meals | Settings (+ TabRouter for cross-tab links)
+        ├── RootView.swift              ← TabView: Chores | Shopping | Meals | Packing | Settings (+ TabRouter for cross-tab links)
         ├── Auth/                       ← Sign-in and household setup screens
         ├── ChoreList/ + ChoreForm/     ← Chore list, rows, add/edit sheet
         ├── Categories/                 ← Category grid and add/edit form
         ├── Shopping/                   ← Shopping list, rows, item/store/type forms
+        ├── Packing/                    ← Trip list, trip form, trip detail (sections, linked meals/chores)
         ├── Meals/                      ← Meal list, rows, add/edit sheet with ingredients → grocery link
         └── Settings/                   ← Members, invite code, notifications, data summary
 ```
@@ -136,7 +138,7 @@ Each person uses their own device and their own (anonymous or Google) Firebase a
 
 ### How it works under the hood
 
-- All data lives under a single Firestore document tree: `/households/{householdId}` with subcollections `chores`, `categories`, `completions`, `shoppingItems`, and `meals`.
+- All data lives under a single Firestore document tree: `/households/{householdId}` with subcollections `chores`, `categories`, `completions`, `shoppingItems`, `meals`, `trips`, and `packingItems`.
 - The household doc holds `memberIds` (Firebase Auth UIDs). Security rules only allow reads/writes when `request.auth.uid` is in that array.
 - Invite codes live at `/invites/{code} → householdId`. Only household members can create or rotate codes; joining adds your UID to `memberIds` (and may touch nothing else).
 - Each store (`ChoreStore`, `ShoppingStore`, `MealStore`, `CategoryStore`) keeps a snapshot listener open, so remote edits appear immediately; Firestore's local cache keeps the app working offline.
@@ -206,7 +208,7 @@ Categories: `name`, `colorHex`, `iconName`, `sortOrder`. Completion logs: `chore
 - Household creation requires you to be the sole member and owner.
 - Joining (self-add to `memberIds`) may touch **only** that field.
 - Invite codes can only be created by the household owner (same-batch creation) or an existing member (rotation) — prevents invite forgery.
-- Every subcollection (`chores`, `categories`, `completions`, `shoppingItems`, `meals`) is member-only.
+- Every subcollection (`chores`, `categories`, `completions`, `shoppingItems`, `meals`, `trips`, `packingItems`) is member-only.
 
 ---
 

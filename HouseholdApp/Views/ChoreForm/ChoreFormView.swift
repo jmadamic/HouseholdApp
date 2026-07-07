@@ -7,6 +7,7 @@ struct ChoreFormView: View {
     @EnvironmentObject private var appSettings:   AppSettings
     @EnvironmentObject private var choreStore:    ChoreStore
     @EnvironmentObject private var categoryStore: CategoryStore
+    @EnvironmentObject private var tripStore:     TripStore
     @EnvironmentObject private var householdCtrl: HouseholdController
 
     let chore: ChoreDoc?
@@ -18,6 +19,7 @@ struct ChoreFormView: View {
     @State private var dueDate         = Date()
     @State private var repeatInt       = RepeatInterval.none
     @State private var selectedCatId: String? = nil
+    @State private var tripId: String?        = nil
 
     @State private var showingAddCategory = false
     @State private var categoryToEdit: CategoryDoc? = nil
@@ -87,6 +89,23 @@ struct ChoreFormView: View {
                     }
                 }
 
+                if !tripStore.trips.isEmpty {
+                    Section {
+                        Picker("Trip / event", selection: $tripId) {
+                            Text("None").tag(nil as String?)
+                            ForEach(tripStore.trips) { trip in
+                                Text("\(trip.nameSafe) (\(trip.dateRangeLabel))").tag(trip.id as String?)
+                            }
+                        }
+                    } header: {
+                        Text("Trip")
+                    } footer: {
+                        if tripId != nil {
+                            Text("This chore appears on the trip's packing screen, e.g. \"turn off water heater before leaving\".")
+                        }
+                    }
+                }
+
                 Section("Notes (optional)") {
                     TextEditor(text: $notes).frame(minHeight: 80)
                 }
@@ -135,6 +154,7 @@ struct ChoreFormView: View {
         dueDate        = c.dueDate ?? Date()
         repeatInt      = c.repeatIntervalEnum
         selectedCatId  = c.categoryId
+        tripId         = c.tripId
     }
 
     private func save() {
@@ -151,6 +171,7 @@ struct ChoreFormView: View {
         target.dueDate            = dueDateType == .none ? nil : dueDate
         target.repeatIntervalEnum = repeatInt
         target.categoryId         = selectedCatId
+        target.tripId             = tripId
         choreStore.save(target, householdId: householdId)
         dismiss()
     }

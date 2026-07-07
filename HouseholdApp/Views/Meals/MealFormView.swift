@@ -7,6 +7,8 @@ struct MealFormView: View {
     @EnvironmentObject private var appSettings:   AppSettings
     @EnvironmentObject private var mealStore:     MealStore
     @EnvironmentObject private var shoppingStore: ShoppingStore
+    @EnvironmentObject private var tripStore:     TripStore
+    @EnvironmentObject private var packingStore:  PackingStore
     @EnvironmentObject private var householdCtrl: HouseholdController
 
     let meal: MealDoc?
@@ -20,6 +22,7 @@ struct MealFormView: View {
     @State private var ingredients: [MealIngredient] = []
     @State private var newIngredient   = ""
     @State private var notes           = ""
+    @State private var tripId: String? = nil
     @State private var showMissingPrompt = false
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
@@ -67,6 +70,23 @@ struct MealFormView: View {
                 }
 
                 ingredientsSection
+
+                if !tripStore.trips.isEmpty {
+                    Section {
+                        Picker("Trip / event", selection: $tripId) {
+                            Text("None").tag(nil as String?)
+                            ForEach(tripStore.trips) { trip in
+                                Text("\(trip.nameSafe) (\(trip.dateRangeLabel))").tag(trip.id as String?)
+                            }
+                        }
+                    } header: {
+                        Text("Trip")
+                    } footer: {
+                        if tripId != nil {
+                            Text("This meal's ingredients are added to the trip's packing list under Food.")
+                        }
+                    }
+                }
 
                 Section("Notes (optional)") {
                     TextEditor(text: $notes).frame(minHeight: 60)
@@ -228,6 +248,7 @@ struct MealFormView: View {
         selectedMembers = Set(m.assignedToMembers)
         ingredients     = m.ingredients
         notes           = m.notes ?? ""
+        tripId          = m.tripId
     }
 
     /// Save button: if ingredients are missing and not yet on the grocery
@@ -255,7 +276,26 @@ struct MealFormView: View {
         target.assignedToMembers = selectedMembers.sorted()
         target.ingredients       = ingredients.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
         target.notes             = notes.isEmpty ? nil : notes
+        target.tripId            = tripId
         mealStore.save(target, householdId: householdId)
+        if tripId != nil { syncIngredientsToPackingList(for: target) }
         dismiss()
+    }
+
+    /// When the meal is tied to a trip, every ingredient goes onto that trip's
+    /// packing list under Food (skipping names already on the list).
+    private func syncIngredientsToPackingList(for meal: MealDoc) {
+        guard let tripId = meal.tripId else { return }
+        for ing in meal.ingredients {
+            let trimmed = ing.name.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty,
+                  !packingStore.hasItem(named: trimmed, tripId: tripId) else { continue }
+            let item = PackingItemDoc(
+                id: UUID().uuidString, tripId: tripId, name: trimmed,
+                section: "Food", isPacked: false, packedAt: nil,
+                createdAt: Date(), mealId: meal.id
+            )
+            packingStore.save(item, householdId: householdId)
+        }
     }
 }

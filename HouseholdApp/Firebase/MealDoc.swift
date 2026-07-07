@@ -63,6 +63,9 @@ struct MealDoc: Codable, Identifiable {
     var isCompleted: Bool
     var completedAt: Date?
     var createdAt: Date
+    /// Set when this meal belongs to a trip/event — its ingredients are then
+    /// auto-added to the trip's packing list under the Food section.
+    var tripId: String? = nil
 
     var mealTypeEnum: MealType {
         get { MealType(rawValue: mealType) ?? .dinner }
