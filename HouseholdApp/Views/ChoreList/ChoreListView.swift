@@ -120,7 +120,7 @@ struct ChoreListView: View {
             .tint(.orange)
         } else {
             Button {
-                choreStore.markComplete(chore, byMemberIndex: 0, householdId: householdId)
+                choreStore.markComplete(chore, byMemberIndex: appSettings.myMemberIndex, householdId: householdId)
             } label: { Label("Done", systemImage: "checkmark") }
             .tint(.green)
         }

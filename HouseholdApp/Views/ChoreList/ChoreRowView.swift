@@ -70,7 +70,7 @@ struct ChoreRowView: View {
                 if chore.isCompleted {
                     choreStore.markIncomplete(chore, householdId: householdId)
                 } else {
-                    choreStore.markComplete(chore, byMemberIndex: 0, householdId: householdId)
+                    choreStore.markComplete(chore, byMemberIndex: appSettings.myMemberIndex, householdId: householdId)
                 }
             }
         } label: {

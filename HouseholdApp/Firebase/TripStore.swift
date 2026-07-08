@@ -1,3 +1,11 @@
+// TripStore.swift
+// Real-time Firestore store for /households/{id}/trips.
+//
+// Trips are sorted by start date. Deleting a trip cascades to its
+// packingItems (queried by tripId). Trips that ended more than 1 month ago
+// are deleted once per session on the first snapshot. Write failures
+// surface on `errorMessage`.
+
 import Foundation
 import FirebaseFirestore
 
