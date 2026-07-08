@@ -45,7 +45,7 @@ struct PackingListView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
-        .listSectionSpacing(.compact)
+                    .listSectionSpacing(.compact)
                 }
             }
             .navigationTitle("Packing")

@@ -200,7 +200,11 @@ final class HouseholdController: ObservableObject {
     // ── Delete a household and all its data ───────────────────────────────────
     private func deleteHousehold(id: String, inviteCode: String) async throws {
         let householdRef = db.collection("households").document(id)
-        let subcollections = ["chores", "categories", "completions", "shoppingItems"]
+        // Must list EVERY subcollection — Firestore doesn't cascade deletes,
+        // and anything missed here is orphaned forever once the household
+        // doc (and with it, all member access) is gone.
+        let subcollections = ["chores", "categories", "completions",
+                              "shoppingItems", "meals", "trips", "packingItems"]
 
         // Delete all subcollection documents first (Firestore doesn't cascade).
         for sub in subcollections {
@@ -223,7 +227,11 @@ final class HouseholdController: ObservableObject {
 
     func saveMemberNames(_ names: [String]) {
         guard let id = currentHouseholdId else { return }
-        db.collection("households").document(id).updateData(["memberNames": names])
+        db.collection("households").document(id).updateData(["memberNames": names]) { [weak self] error in
+            if let error {
+                Task { @MainActor in self?.errorMessage = error.localizedDescription }
+            }
+        }
     }
 
     // ── Rotate invite code (optional future feature) ──────────────────────────

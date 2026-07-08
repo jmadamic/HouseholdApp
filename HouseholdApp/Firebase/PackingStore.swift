@@ -1,3 +1,11 @@
+// PackingStore.swift
+// Real-time Firestore store for /households/{id}/packingItems.
+//
+// One flat collection filtered client-side by tripId (items(forTrip:)).
+// hasItem(named:tripId:) provides the case-insensitive dedupe used when a
+// meal tied to a trip auto-adds its ingredients to the Food section.
+// Write failures surface on `errorMessage`.
+
 import Foundation
 import FirebaseFirestore
 
