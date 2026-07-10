@@ -18,7 +18,8 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 | **Shared member names** | Member names are stored on the household document, so renaming someone updates every device |
 | **Shopping list** | Separate tab for groceries/household items — group by store or by type, with assignee support. Stores and item types are fully editable with custom icons |
 | **Packing lists** | Create trips/events with dates and pack per-section (Clothing, Food, Toiletries, custom…). Meals tied to a trip auto-add their ingredients to the Food section; chores can be tied to a trip too (e.g. "turn off water heater before leaving") |
-| **Meal planning** | Plan meals by day and type (breakfast, brunch, lunch, dinner, snack, dessert) with an optional dish name and assigned cook(s). Track ingredients you have vs. need — missing ones can be added to the grocery list in one tap, and each grocery item links back to its meal |
+| **Meal planning** | Plan meals by day and type (breakfast, brunch, lunch, dinner, snack, dessert) with an optional dish name and assigned cook(s). Track ingredients you have vs. need — missing ones can be added to the grocery list in one tap, and each grocery item links back to its meal. Meals auto-complete once their day passes (no checkbox). Attach a recipe link and/or typed instructions |
+| **My Meals library** | Save any meal for repeated use, then plan it again with one tap (prefills ingredients, recipe, instructions). Share a meal — full details as text — via the standard share sheet |
 | **Local notifications** | Due-date reminders at 9 am (day-of and/or day-before), filterable to my/shared/all chores in Settings |
 | **Auto-cleanup** | Completed chores, purchased items, and past meals are deleted automatically after 1 month |
 | **Easy UI** | Swipe to complete or delete; tap to edit; colour-coded urgency sections; VoiceOver labels and 44 pt tap targets throughout |
@@ -74,7 +75,7 @@ HouseholdApp/
         ├── Categories/                 ← Category grid and add/edit form
         ├── Shopping/                   ← Shopping list, rows, item/store/type forms
         ├── Packing/                    ← Trip list, trip form, trip detail (sections, linked meals/chores)
-        ├── Meals/                      ← Meal list, rows, add/edit sheet with ingredients → grocery link
+        ├── Meals/                      ← Meal list, rows, add/edit sheet, My Meals library (saved meals)
         └── Settings/                   ← Members, invite code, notifications, data summary
 ```
 

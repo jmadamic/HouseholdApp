@@ -12,6 +12,7 @@ struct HouseholdAppApp: App {
     @StateObject private var categoryStore     = CategoryStore()
     @StateObject private var shoppingStore     = ShoppingStore()
     @StateObject private var mealStore         = MealStore()
+    @StateObject private var savedMealStore    = SavedMealStore()
     @StateObject private var tripStore         = TripStore()
     @StateObject private var packingStore      = PackingStore()
     @StateObject private var router            = TabRouter()
@@ -43,6 +44,7 @@ struct HouseholdAppApp: App {
                 .environmentObject(categoryStore)
                 .environmentObject(shoppingStore)
                 .environmentObject(mealStore)
+                .environmentObject(savedMealStore)
                 .environmentObject(tripStore)
                 .environmentObject(packingStore)
                 .environmentObject(router)
@@ -79,6 +81,7 @@ struct HouseholdAppApp: App {
         categoryStore.seedDefaults(householdId: hid)
         shoppingStore.startListening(householdId: hid)
         mealStore.startListening(householdId: hid)
+        savedMealStore.startListening(householdId: hid)
         tripStore.startListening(householdId: hid)
         packingStore.startListening(householdId: hid)
     }

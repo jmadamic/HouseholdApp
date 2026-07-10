@@ -9,9 +9,12 @@ struct MealFormView: View {
     @EnvironmentObject private var shoppingStore: ShoppingStore
     @EnvironmentObject private var tripStore:     TripStore
     @EnvironmentObject private var packingStore:  PackingStore
+    @EnvironmentObject private var savedMealStore: SavedMealStore
     @EnvironmentObject private var householdCtrl: HouseholdController
 
     let meal: MealDoc?
+    /// When set (and `meal` is nil), the form prefills from this saved meal.
+    var template: SavedMealDoc? = nil
 
     // Stable ID up front so grocery items created mid-edit link correctly.
     @State private var mealId          = UUID().uuidString
@@ -23,6 +26,9 @@ struct MealFormView: View {
     @State private var newIngredient   = ""
     @State private var notes           = ""
     @State private var tripId: String? = nil
+    @State private var recipeURL       = ""
+    @State private var instructions    = ""
+    @State private var savedToLibrary  = false
     @State private var showMissingPrompt = false
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
@@ -88,8 +94,52 @@ struct MealFormView: View {
                     }
                 }
 
+                Section {
+                    HStack {
+                        TextField("Recipe link (optional)", text: $recipeURL)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        if let url = validRecipeURL {
+                            Link(destination: url) {
+                                Image(systemName: "safari")
+                            }
+                            .accessibilityLabel("Open recipe link")
+                        }
+                    }
+                    TextEditor(text: $instructions)
+                        .frame(minHeight: 80)
+                        .overlay(alignment: .topLeading) {
+                            if instructions.isEmpty {
+                                Text("Type out cooking instructions…")
+                                    .foregroundStyle(Color(.placeholderText))
+                                    .padding(.top, 8).padding(.leading, 4)
+                                    .allowsHitTesting(false)
+                            }
+                        }
+                } header: {
+                    Text("Recipe")
+                } footer: {
+                    Text("Paste a link to an online recipe and/or write the steps here. Both are included when you share the meal.")
+                }
+
                 Section("Notes (optional)") {
                     TextEditor(text: $notes).frame(minHeight: 60)
+                }
+
+                Section {
+                    ShareLink(item: currentExportText()) {
+                        Label("Share Meal", systemImage: "square.and.arrow.up")
+                    }
+                    Button {
+                        saveToLibrary()
+                    } label: {
+                        Label(savedToLibrary ? "Saved to My Meals" : "Save to My Meals",
+                              systemImage: savedToLibrary ? "checkmark.circle.fill" : "text.book.closed")
+                    }
+                    .disabled(savedToLibrary || name.trimmingCharacters(in: .whitespaces).isEmpty)
+                } footer: {
+                    Text("Sharing sends the full meal (ingredients, recipe, instructions). Saving adds it to My Meals so you can plan it again anytime — a name is required.")
                 }
             }
             .navigationTitle(meal == nil ? "New Meal" : "Edit Meal")
@@ -240,15 +290,70 @@ struct MealFormView: View {
     // ── Populate / save ────────────────────────────────────────────────────────
 
     private func populate() {
-        guard let m = meal else { return }
-        mealId          = m.id
-        name            = m.name ?? ""
-        day             = m.day
-        mealType        = m.mealTypeEnum
-        selectedMembers = Set(m.assignedToMembers)
-        ingredients     = m.ingredients
-        notes           = m.notes ?? ""
-        tripId          = m.tripId
+        if let m = meal {
+            mealId          = m.id
+            name            = m.name ?? ""
+            day             = m.day
+            mealType        = m.mealTypeEnum
+            selectedMembers = Set(m.assignedToMembers)
+            ingredients     = m.ingredients
+            notes           = m.notes ?? ""
+            tripId          = m.tripId
+            recipeURL       = m.recipeURL ?? ""
+            instructions    = m.instructions ?? ""
+        } else if let t = template {
+            // Planning a saved meal: copy the dish, leave day/cook/trip fresh.
+            name         = t.name
+            mealType     = t.mealTypeEnum
+            ingredients  = t.ingredientNames.map { MealIngredient(name: $0) }
+            notes        = t.notes ?? ""
+            recipeURL    = t.recipeURL ?? ""
+            instructions = t.instructions ?? ""
+        }
+    }
+
+    private var validRecipeURL: URL? {
+        let trimmed = recipeURL.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, let url = URL(string: trimmed),
+              url.scheme == "http" || url.scheme == "https" else { return nil }
+        return url
+    }
+
+    /// Export built from the CURRENT form fields (not the last-saved doc),
+    /// so shares reflect what's on screen.
+    private func currentExportText() -> String {
+        var doc = MealDoc(
+            id: mealId, name: nil, day: day, mealType: mealType.rawValue,
+            assignedToMembers: selectedMembers.sorted(),
+            ingredients: ingredients.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty },
+            notes: notes.isEmpty ? nil : notes,
+            isCompleted: false, completedAt: nil, createdAt: Date()
+        )
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        doc.name         = trimmedName.isEmpty ? nil : trimmedName
+        doc.recipeURL    = recipeURL.isEmpty ? nil : recipeURL
+        doc.instructions = instructions.isEmpty ? nil : instructions
+        return doc.exportText(memberNames: { appSettings.memberName(at: $0) })
+    }
+
+    private func saveToLibrary() {
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmedName.isEmpty else { return }
+        let saved = SavedMealDoc(
+            id: UUID().uuidString,
+            name: trimmedName,
+            mealType: mealType.rawValue,
+            ingredientNames: ingredients
+                .map { $0.name.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty },
+            recipeURL: recipeURL.isEmpty ? nil : recipeURL,
+            instructions: instructions.isEmpty ? nil : instructions,
+            notes: notes.isEmpty ? nil : notes,
+            createdAt: Date()
+        )
+        savedMealStore.save(saved, householdId: householdId)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        savedToLibrary = true
     }
 
     /// Save button: if ingredients are missing and not yet on the grocery
@@ -277,6 +382,8 @@ struct MealFormView: View {
         target.ingredients       = ingredients.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
         target.notes             = notes.isEmpty ? nil : notes
         target.tripId            = tripId
+        target.recipeURL         = recipeURL.isEmpty ? nil : recipeURL
+        target.instructions      = instructions.isEmpty ? nil : instructions
         mealStore.save(target, householdId: householdId)
         if tripId != nil { syncIngredientsToPackingList(for: target) }
         dismiss()

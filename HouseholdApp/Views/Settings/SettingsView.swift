@@ -11,6 +11,7 @@ struct SettingsView: View {
     @EnvironmentObject private var choreStore:    ChoreStore
     @EnvironmentObject private var shoppingStore: ShoppingStore
     @EnvironmentObject private var mealStore:     MealStore
+    @EnvironmentObject private var savedMealStore: SavedMealStore
     @EnvironmentObject private var tripStore:     TripStore
     @EnvironmentObject private var packingStore:  PackingStore
 
@@ -252,6 +253,7 @@ struct SettingsView: View {
         choreStore.chores.forEach   { choreStore.delete($0,    householdId: hid) }
         shoppingStore.items.forEach { shoppingStore.delete($0, householdId: hid) }
         mealStore.meals.forEach     { mealStore.delete($0,     householdId: hid) }
+        savedMealStore.savedMeals.forEach { savedMealStore.delete($0, householdId: hid) }
         tripStore.trips.forEach     { tripStore.delete($0,     householdId: hid) }
         packingStore.items.forEach  { packingStore.delete($0,  householdId: hid) }
     }

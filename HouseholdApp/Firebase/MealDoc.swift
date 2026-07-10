@@ -60,12 +60,19 @@ struct MealDoc: Codable, Identifiable {
     var assignedToMembers: [Int]   // empty = everyone
     var ingredients: [MealIngredient]
     var notes: String?
+    /// Legacy manual-completion fields. The UI no longer offers a checkbox —
+    /// a meal counts as done once its day has passed (see `isPast`) — but the
+    /// fields remain so pre-existing documents keep decoding.
     var isCompleted: Bool
     var completedAt: Date?
     var createdAt: Date
     /// Set when this meal belongs to a trip/event — its ingredients are then
     /// auto-added to the trip's packing list under the Food section.
     var tripId: String? = nil
+    /// Link to an online recipe (opened via Safari from the meal form).
+    var recipeURL: String? = nil
+    /// Free-form cooking instructions typed directly into the meal.
+    var instructions: String? = nil
 
     var mealTypeEnum: MealType {
         get { MealType(rawValue: mealType) ?? .dinner }
@@ -94,5 +101,40 @@ struct MealDoc: Codable, Identifiable {
         if cal.isDateInTomorrow(day)  { return "Tomorrow" }
         if cal.isDateInYesterday(day) { return "Yesterday" }
         return day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())
+    }
+
+    /// A meal auto-completes once its day is over — no manual checkbox.
+    var isPast: Bool {
+        day < Calendar.current.startOfDay(for: .now)
+    }
+
+    /// Plain-text export with every detail, for sharing via the share sheet.
+    func exportText(memberNames: (Int) -> String) -> String {
+        var lines: [String] = []
+        lines.append("🍽 \(displayName) — \(mealTypeEnum.label)")
+        lines.append("📅 \(day.formatted(.dateTime.weekday(.wide).month(.wide).day().year()))")
+        let cooks = assignedToMembers.sorted()
+        lines.append(cooks.isEmpty
+            ? "👥 Everyone"
+            : "👥 " + cooks.map(memberNames).joined(separator: ", "))
+        if !ingredients.isEmpty {
+            lines.append("")
+            lines.append("Ingredients:")
+            for ing in ingredients { lines.append("• \(ing.name)") }
+        }
+        if let url = recipeURL, !url.isEmpty {
+            lines.append("")
+            lines.append("Recipe: \(url)")
+        }
+        if let instructions, !instructions.isEmpty {
+            lines.append("")
+            lines.append("Instructions:")
+            lines.append(instructions)
+        }
+        if let notes, !notes.isEmpty {
+            lines.append("")
+            lines.append("Notes: \(notes)")
+        }
+        return lines.joined(separator: "\n")
     }
 }

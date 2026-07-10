@@ -10,6 +10,7 @@ struct MealListView: View {
 
     @State private var filterIndex     = -2   // -2=All, 0+=member
     @State private var showingAddMeal  = false
+    @State private var showingSavedMeals = false
     @State private var mealToEdit: MealDoc? = nil
     @State private var showDeleteAlert = false
     @State private var mealToDelete: MealDoc? = nil
@@ -70,9 +71,6 @@ struct MealListView: View {
                                                 mealToDelete = meal; showDeleteAlert = true
                                             } label: { Label("Delete", systemImage: "trash") }
                                         }
-                                        .swipeActions(edge: .leading) {
-                                            completeSwipeAction(for: meal)
-                                        }
                                 }
                             } header: {
                                 HStack {
@@ -90,6 +88,12 @@ struct MealListView: View {
             }
             .navigationTitle("Meals")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { showingSavedMeals = true } label: {
+                        Image(systemName: "text.book.closed").font(.title3)
+                    }
+                    .accessibilityLabel("My Meals library")
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { showingAddMeal = true } label: {
                         Image(systemName: "plus.circle.fill").font(.title2)
@@ -98,6 +102,7 @@ struct MealListView: View {
                 }
             }
             .sheet(isPresented: $showingAddMeal) { MealFormView(meal: nil) }
+            .sheet(isPresented: $showingSavedMeals) { SavedMealsView() }
             .sheet(item: $mealToEdit)            { MealFormView(meal: $0) }
             .alert("Delete Meal?", isPresented: $showDeleteAlert, presenting: mealToDelete) { meal in
                 Button("Delete", role: .destructive) {
@@ -131,15 +136,4 @@ struct MealListView: View {
         .background(Color(.systemGroupedBackground))
     }
 
-    @ViewBuilder
-    private func completeSwipeAction(for meal: MealDoc) -> some View {
-        Button {
-            mealStore.toggleComplete(meal, householdId: householdId)
-        } label: {
-            meal.isCompleted
-                ? Label("Undo", systemImage: "arrow.uturn.backward")
-                : Label("Done", systemImage: "checkmark")
-        }
-        .tint(meal.isCompleted ? .orange : .green)
-    }
 }
