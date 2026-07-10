@@ -55,13 +55,6 @@ final class MealStore: ObservableObject {
             .collection("meals").document(meal.id).delete()
     }
 
-    func toggleComplete(_ meal: MealDoc, householdId: String) {
-        var updated = meal
-        updated.isCompleted.toggle()
-        updated.completedAt = updated.isCompleted ? Date() : nil
-        save(updated, householdId: householdId)
-    }
-
     // MARK: - Auto-cleanup
 
     /// Deletes meals whose planned day is more than 1 month in the past.
