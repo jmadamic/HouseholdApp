@@ -26,6 +26,12 @@ struct ChoreDoc: Codable, Identifiable {
     /// Set when this chore is tied to a trip/event (e.g. "turn off water
     /// heater before leaving"). Optional + defaulted for backward compat.
     var tripId: String? = nil
+    /// True when the time component of dueDate is meaningful (user picked a
+    /// time). Optional + defaulted for backward compat.
+    var hasDueTime: Bool? = nil
+    /// True for gardening chores — they show in the Chores tab like any
+    /// other, and additionally under the Garden tab.
+    var isGardening: Bool? = nil
 
     // Computed display helpers (same logic as old CoreDataHelpers)
     var titleSafe: String { title }
@@ -50,10 +56,15 @@ struct ChoreDoc: Codable, Identifiable {
         switch dueDateTypeEnum {
         case .specificDate:
             guard let date = dueDate else { return nil }
-            if cal.isDateInToday(date)     { return "Today" }
-            if cal.isDateInTomorrow(date)  { return "Tomorrow" }
-            if cal.isDateInYesterday(date) { return "Yesterday" }
-            return date.formatted(date: .abbreviated, time: .omitted)
+            let dayPart: String
+            if cal.isDateInToday(date)          { dayPart = "Today" }
+            else if cal.isDateInTomorrow(date)  { dayPart = "Tomorrow" }
+            else if cal.isDateInYesterday(date) { dayPart = "Yesterday" }
+            else { dayPart = date.formatted(date: .abbreviated, time: .omitted) }
+            if hasDueTime == true {
+                return "\(dayPart), \(date.formatted(date: .omitted, time: .shortened))"
+            }
+            return dayPart
         case .week:
             guard let date = dueDate else { return "This week" }
             if let thisWeek = cal.dateInterval(of: .weekOfYear, for: .now), thisWeek.contains(date) {
@@ -88,6 +99,9 @@ struct ChoreDoc: Codable, Identifiable {
 
     var isOverdue: Bool {
         guard !isCompleted, let effective = effectiveDueDate else { return false }
+        if hasDueTime == true, dueDateTypeEnum == .specificDate {
+            return effective < .now
+        }
         return effective < Calendar.current.startOfDay(for: .now)
     }
 

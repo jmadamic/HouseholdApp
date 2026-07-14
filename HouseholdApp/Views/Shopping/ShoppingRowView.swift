@@ -7,6 +7,7 @@ struct ShoppingRowView: View {
     @EnvironmentObject private var shoppingStore: ShoppingStore
     @EnvironmentObject private var householdCtrl: HouseholdController
     @EnvironmentObject private var router:        TabRouter
+    @EnvironmentObject private var gardenStore:   GardenStore
 
     let item: ShoppingItemDoc
     @State private var checkAnimating = false
@@ -55,6 +56,15 @@ struct ShoppingRowView: View {
                             .font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                             .padding(.horizontal, 6).padding(.vertical, 2)
                             .background(Color.secondary.opacity(0.12), in: Capsule())
+                    }
+                    if !item.isPurchased, let plant = gardenStore.readySoonPlant(matching: item.name) {
+                        // Growing in the garden — maybe hold off buying it.
+                        Label("Growing — \(plant.readyLabel)", systemImage: "leaf.fill")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.green)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(.green.opacity(0.12), in: Capsule())
+                            .accessibilityLabel("\(plant.nameSafe) is growing in your garden, \(plant.readyLabel)")
                     }
                     if let mealId = item.mealId, let mealName = item.mealName {
                         // Link back to the meal this ingredient belongs to.

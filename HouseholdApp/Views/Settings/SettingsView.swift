@@ -14,6 +14,7 @@ struct SettingsView: View {
     @EnvironmentObject private var savedMealStore: SavedMealStore
     @EnvironmentObject private var tripStore:     TripStore
     @EnvironmentObject private var packingStore:  PackingStore
+    @EnvironmentObject private var gardenStore:   GardenStore
 
     @State private var showingDeleteAlert = false
     @State private var showingAddMember   = false
@@ -256,5 +257,6 @@ struct SettingsView: View {
         savedMealStore.savedMeals.forEach { savedMealStore.delete($0, householdId: hid) }
         tripStore.trips.forEach     { tripStore.delete($0,     householdId: hid) }
         packingStore.items.forEach  { packingStore.delete($0,  householdId: hid) }
+        gardenStore.plants.forEach  { gardenStore.delete($0,   householdId: hid) }
     }
 }
