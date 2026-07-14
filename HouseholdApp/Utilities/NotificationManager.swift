@@ -111,16 +111,19 @@ final class NotificationManager {
 
         case .specificDate:
             guard let due = chore.dueDate else { return }
+            // Chores with an explicit due time fire AT that time; otherwise 9am.
+            let timed = chore.hasDueTime == true
+            let timeLabel = timed ? " at \(due.formatted(date: .omitted, time: .shortened))" : ""
             if wantDayOf,
-               let dayOf = cal.date(bySettingHour: 9, minute: 0, second: 0, of: due),
+               let dayOf = timed ? due : cal.date(bySettingHour: 9, minute: 0, second: 0, of: due),
                dayOf > now {
-                entries.append((dayOf, "Due today", 0))
+                entries.append((dayOf, "Due today\(timeLabel)", 0))
             }
             if wantDayBefore,
                let prev = cal.date(byAdding: .day, value: -1, to: due),
-               let eve  = cal.date(bySettingHour: 9, minute: 0, second: 0, of: prev),
+               let eve  = timed ? prev : cal.date(bySettingHour: 9, minute: 0, second: 0, of: prev),
                eve > now {
-                entries.append((eve, "Due tomorrow", 1))
+                entries.append((eve, "Due tomorrow\(timeLabel)", 1))
             }
 
         case .week:

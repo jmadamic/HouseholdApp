@@ -35,12 +35,15 @@ struct RootView: View {
             MealListView()
                 .tabItem { Label("Meals", systemImage: "fork.knife") }
                 .tag(2)
+            GardenView()
+                .tabItem { Label("Garden", systemImage: "leaf.fill") }
+                .tag(3)
             PackingListView()
                 .tabItem { Label("Packing", systemImage: "suitcase.rolling.fill") }
-                .tag(3)
+                .tag(4)
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape.fill") }
-                .tag(4)
+                .tag(5)
         }
         .tint(.accentColor)
     }

@@ -11,6 +11,9 @@ struct ChoreFormView: View {
     @EnvironmentObject private var householdCtrl: HouseholdController
 
     let chore: ChoreDoc?
+    /// When true and creating a new chore, the Gardening toggle starts on
+    /// (used by the Garden tab's "add chore" button).
+    var defaultGardening: Bool = false
 
     @State private var title           = ""
     @State private var notes           = ""
@@ -20,6 +23,8 @@ struct ChoreFormView: View {
     @State private var repeatInt       = RepeatInterval.none
     @State private var selectedCatId: String? = nil
     @State private var tripId: String?        = nil
+    @State private var hasDueTime  = false
+    @State private var isGardening = false
 
     @State private var showingAddCategory = false
     @State private var categoryToEdit: CategoryDoc? = nil
@@ -72,6 +77,10 @@ struct ChoreFormView: View {
                     }
                     if dueDateType == .specificDate {
                         DatePicker("Date", selection: $dueDate, displayedComponents: .date)
+                        Toggle("At a specific time", isOn: $hasDueTime)
+                        if hasDueTime {
+                            DatePicker("Time", selection: $dueDate, displayedComponents: .hourAndMinute)
+                        }
                     } else if dueDateType == .week {
                         DatePicker("Week of", selection: $dueDate, displayedComponents: .date)
                     } else if dueDateType == .month {
@@ -104,6 +113,15 @@ struct ChoreFormView: View {
                             Text("This chore appears on the trip's packing screen, e.g. \"turn off water heater before leaving\".")
                         }
                     }
+                }
+
+                Section {
+                    Toggle(isOn: $isGardening) {
+                        Label("Gardening chore", systemImage: "leaf.fill")
+                    }
+                    .tint(.green)
+                } footer: {
+                    Text("Gardening chores also appear in the Garden tab.")
                 }
 
                 Section("Notes (optional)") {
@@ -146,7 +164,10 @@ struct ChoreFormView: View {
     }
 
     private func populate() {
-        guard let c = chore else { return }
+        guard let c = chore else {
+            isGardening = defaultGardening
+            return
+        }
         title          = c.title
         notes          = c.notes ?? ""
         selectedMembers = Set(c.assignedToMembers)
@@ -155,6 +176,8 @@ struct ChoreFormView: View {
         repeatInt      = c.repeatIntervalEnum
         selectedCatId  = c.categoryId
         tripId         = c.tripId
+        hasDueTime     = c.hasDueTime ?? false
+        isGardening    = c.isGardening ?? false
     }
 
     private func save() {
@@ -168,10 +191,16 @@ struct ChoreFormView: View {
         target.notes              = notes.isEmpty ? nil : notes
         target.assignedToMembers  = selectedMembers.sorted()
         target.dueDateTypeEnum    = dueDateType
-        target.dueDate            = dueDateType == .none ? nil : dueDate
+        // Without an explicit time, normalize to start of day so ordering
+        // and the 9am notification default stay predictable.
+        let timed = dueDateType == .specificDate && hasDueTime
+        target.dueDate            = dueDateType == .none ? nil
+                                    : (timed ? dueDate : Calendar.current.startOfDay(for: dueDate))
+        target.hasDueTime         = timed
         target.repeatIntervalEnum = repeatInt
         target.categoryId         = selectedCatId
         target.tripId             = tripId
+        target.isGardening        = isGardening
         choreStore.save(target, householdId: householdId)
         dismiss()
     }

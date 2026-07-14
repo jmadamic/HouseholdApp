@@ -27,6 +27,7 @@ struct ChoreRowView: View {
                     .foregroundStyle(chore.isCompleted ? .secondary : .primary)
                 HStack(spacing: 6) {
                     if let cat = category { categoryBadge(for: cat) }
+                    if chore.isGardening == true { gardeningBadge }
                     if chore.repeatIntervalEnum != .none { repeatBadge }
                 }
             }
@@ -92,6 +93,13 @@ struct ChoreRowView: View {
             .foregroundStyle(color)
             .padding(.horizontal, 6).padding(.vertical, 2)
             .background(color.opacity(0.12), in: Capsule())
+    }
+
+    private var gardeningBadge: some View {
+        Image(systemName: "leaf.fill")
+            .font(.caption2)
+            .foregroundStyle(.green)
+            .accessibilityLabel("Gardening chore")
     }
 
     private var repeatBadge: some View {
