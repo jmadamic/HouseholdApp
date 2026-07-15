@@ -1,7 +1,7 @@
 // ShoppingStore.swift
 // Real-time Firestore store for /households/{id}/shoppingItems.
 //
-// Purchased items older than 1 month are deleted once per session on the
+// Purchased items older than 1 week are deleted once per session on the
 // first snapshot. Items created from a meal's ingredient list carry
 // mealId/mealName (see MealFormView) so the shopping row can link back.
 // Write failures surface on `errorMessage`.
@@ -69,10 +69,10 @@ final class ShoppingStore: ObservableObject {
 
     // MARK: - Auto-cleanup
 
-    /// Deletes purchased items whose purchasedAt is older than 1 month.
+    /// Deletes purchased items whose purchasedAt is older than 1 week.
     /// Called once per session on the first Firestore snapshot.
     private func cleanupOldPurchased(householdId: String) {
-        guard let cutoff = Calendar.current.date(byAdding: .month, value: -1, to: Date()) else { return }
+        guard let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) else { return }
         let stale = items.filter {
             $0.isPurchased && ($0.purchasedAt ?? .distantFuture) < cutoff
         }

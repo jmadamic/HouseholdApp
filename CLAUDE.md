@@ -43,7 +43,7 @@ firebase deploy --only firestore:rules
 - **Multi-member support**: household supports N members. Assignment is `assignedToMembers: [Int]` (member indices); empty = Everyone.
 - **Filter bars**: "All" + one tab per member. Filtering shows items with empty `assignedToMembers` OR containing the selected index.
 - **Row conventions**: 44 pt check-button tap targets, haptic on toggle, VoiceOver summary via `.accessibilityLabel`, `.caption2` (never fixed point sizes).
-- **Auto-cleanup**: completed chores / purchased items / past meals older than 1 month are deleted once per session on first snapshot (`hasCleanedUp` flag in each store).
+- **Auto-cleanup**: completed chores / purchased items / past meals older than 1 week are deleted once per session on first snapshot (`hasCleanedUp` flag in each store).
 - **Cross-tab links**: `TabRouter` (in `RootView.swift`) owns tab selection; `router.openMeal(id)` jumps to the Meals tab and opens a meal.
 - **README**: Always update `README.md` when project structure or features change.
 - **GitHub**: Push changes as PRs on feature branches (repo: jmadamic/HouseholdApp), merge after verifying in the simulator.

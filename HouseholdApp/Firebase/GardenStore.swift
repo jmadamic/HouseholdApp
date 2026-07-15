@@ -2,7 +2,7 @@
 // Real-time Firestore store for /households/{id}/gardenPlants.
 //
 // Plants sort by expected-ready date (soonest first). Harvested plants
-// older than 1 month are deleted once per session on the first snapshot.
+// older than 1 week are deleted once per session on the first snapshot.
 // Write failures surface on `errorMessage`.
 
 import Foundation
@@ -67,10 +67,10 @@ final class GardenStore: ObservableObject {
 
     // MARK: - Auto-cleanup
 
-    /// Deletes plants harvested more than 1 month ago, matching the app's
+    /// Deletes plants harvested more than 1 week ago, matching the app's
     /// other cleanup behavior.
     private func cleanupOldHarvested(householdId: String) {
-        guard let cutoff = Calendar.current.date(byAdding: .month, value: -1, to: Date()) else { return }
+        guard let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) else { return }
         let stale = plants.filter { $0.isHarvested && ($0.harvestedAt ?? .distantFuture) < cutoff }
         for plant in stale {
             delete(plant, householdId: householdId)

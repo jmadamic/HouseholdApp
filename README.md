@@ -22,7 +22,7 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 | **My Meals library** | Save any meal for repeated use, then plan it again with one tap (prefills ingredients, recipe, instructions). Share a meal — full details as text — via the standard share sheet |
 | **Garden** | Track what you're growing and when it'll be ready. Shopping-list items that match a crop that's ready (or close) show a "Growing" hint so you can hold off buying. Gardening chores appear in both the Chores tab and the Garden tab |
 | **Local notifications** | Due-date reminders at 9 am — or at the chore's own time when one is set (day-of and/or day-before), filterable to my/shared/all chores in Settings |
-| **Auto-cleanup** | Completed chores, purchased items, and past meals are deleted automatically after 1 month |
+| **Auto-cleanup** | Completed chores, purchased items, past meals, ended trips, and harvested plants are deleted automatically after 1 week |
 | **Easy UI** | Swipe to complete or delete; tap to edit; colour-coded urgency sections; VoiceOver labels and 44 pt tap targets throughout |
 
 ---
@@ -221,7 +221,7 @@ Categories: `name`, `colorHex`, `iconName`, `sortOrder`. Completion logs: `chore
 HouseholdApp uses a **rolling repeat** model:
 
 - When you mark a repeating chore complete, it is **not archived** — its due date advances by the interval and a `CompletionLog` records the completion.
-- Non-repeating chores are archived in place (`isCompleted = true`) and shown in the **Completed** section until auto-cleanup removes them a month later.
+- Non-repeating chores are archived in place (`isCompleted = true`) and shown in the **Completed** section until auto-cleanup removes them a week later.
 
 ---
 

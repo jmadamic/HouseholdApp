@@ -4,7 +4,7 @@
 // Lifecycle: HouseholdAppApp.startStores opens the snapshot listener when a
 // household loads; every remote or local change re-publishes `chores` and
 // reschedules local due-date notifications. Completed chores older than
-// 1 month are deleted once per session on the first snapshot.
+// 1 week are deleted once per session on the first snapshot.
 //
 // Writes are latency-compensated by Firestore's local cache — saves appear
 // instantly and sync when online. Write failures surface on `errorMessage`.
@@ -103,10 +103,10 @@ final class ChoreStore: ObservableObject {
 
     // MARK: - Auto-cleanup
 
-    /// Deletes completed chores whose completedAt is older than 1 month.
+    /// Deletes completed chores whose completedAt is older than 1 week.
     /// Called once per session on the first Firestore snapshot.
     private func cleanupOldCompleted(householdId: String) {
-        guard let cutoff = Calendar.current.date(byAdding: .month, value: -1, to: Date()) else { return }
+        guard let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) else { return }
         let stale = chores.filter {
             $0.isCompleted && ($0.completedAt ?? .distantFuture) < cutoff
         }
