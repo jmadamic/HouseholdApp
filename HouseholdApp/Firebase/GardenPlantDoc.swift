@@ -60,6 +60,12 @@ struct GardenPlantDoc: Codable, Identifiable {
     /// compat: nil means a pre-harvests document — `allHarvests` synthesizes
     /// one entry from the legacy fields.
     var harvests: [PlantHarvest]? = nil
+    /// True for plants that are simply ready whenever you need them (herbs,
+    /// cut-and-come-again greens). No dated harvests; never auto-completes
+    /// or cleans up. Optional + defaulted for backward compat.
+    var isAlwaysReady: Bool? = nil
+
+    var alwaysReady: Bool { isAlwaysReady == true }
 
     var nameSafe: String { name }
 
@@ -68,6 +74,7 @@ struct GardenPlantDoc: Codable, Identifiable {
     /// Every harvest, oldest first. Falls back to the legacy single-harvest
     /// fields for documents created before multi-harvest support.
     var allHarvests: [PlantHarvest] {
+        if alwaysReady { return [] }
         if let harvests, !harvests.isEmpty {
             return harvests.sorted { $0.expectedDate < $1.expectedDate }
         }
@@ -80,22 +87,29 @@ struct GardenPlantDoc: Codable, Identifiable {
     /// The next harvest still to come, if any.
     var nextHarvest: PlantHarvest? { pendingHarvests.first }
 
-    /// True once every expected harvest has been collected.
-    var isFullyHarvested: Bool { pendingHarvests.isEmpty }
+    /// True once every expected harvest has been collected. Always-ready
+    /// plants never complete — they stay in the Growing section.
+    var isFullyHarvested: Bool { alwaysReady ? false : pendingHarvests.isEmpty }
 
-    /// Sort key for the garden list: next pending harvest, else far future.
-    var nextHarvestDate: Date { nextHarvest?.expectedDate ?? .distantFuture }
+    /// Sort key for the garden list: always-ready plants first (they're
+    /// pickable today), then by next pending harvest.
+    var nextHarvestDate: Date {
+        if alwaysReady { return .distantPast }
+        return nextHarvest?.expectedDate ?? .distantFuture
+    }
 
     /// True when this plant should influence grocery decisions: something
     /// is ready now or within the next week.
     var isReadySoon: Bool {
+        if alwaysReady { return true }
         guard let next = nextHarvest else { return false }
         return next.daysUntilReady <= 7
     }
 
     /// Label for the next harvest, e.g. "2 zucchinis ready in 3 days".
     var readyLabel: String {
-        nextHarvest?.readyLabel ?? "harvested"
+        if alwaysReady { return "Ready whenever" }
+        return nextHarvest?.readyLabel ?? "harvested"
     }
 
     /// Case-insensitive match against a shopping item name, either direction
@@ -111,6 +125,14 @@ struct GardenPlantDoc: Codable, Identifiable {
     /// list so older builds and the store's sort stay correct. Call after
     /// any change to `harvests`.
     mutating func syncLegacyFields() {
+        if alwaysReady {
+            // Older builds read the legacy fields: present as ready today,
+            // never harvested.
+            expectedReadyDate = Calendar.current.startOfDay(for: .now)
+            isHarvested = false
+            harvestedAt = nil
+            return
+        }
         let all = allHarvests
         expectedReadyDate = nextHarvest?.expectedDate
             ?? all.last?.expectedDate ?? expectedReadyDate

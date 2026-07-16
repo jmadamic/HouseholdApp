@@ -44,10 +44,12 @@ struct GardenView: View {
                                             } label: { Label("Delete", systemImage: "trash") }
                                         }
                                         .swipeActions(edge: .leading) {
-                                            Button {
-                                                gardenStore.markNextHarvested(plant, householdId: householdId)
-                                            } label: { Label("Harvested", systemImage: "basket.fill") }
-                                            .tint(.green)
+                                            if !plant.alwaysReady {
+                                                Button {
+                                                    gardenStore.markNextHarvested(plant, householdId: householdId)
+                                                } label: { Label("Harvested", systemImage: "basket.fill") }
+                                                .tint(.green)
+                                            }
                                         }
                                 }
                             } header: {
@@ -134,7 +136,7 @@ struct GardenView: View {
         let done = plant.isFullyHarvested
         let remaining = plant.pendingHarvests.count
         return HStack(spacing: 12) {
-            Image(systemName: done ? "basket.fill" : "leaf.fill")
+            Image(systemName: done ? "basket.fill" : (plant.alwaysReady ? "scissors" : "leaf.fill"))
                 .font(.title3)
                 .foregroundStyle(done ? .brown : .green)
                 .frame(width: 36, height: 36)
