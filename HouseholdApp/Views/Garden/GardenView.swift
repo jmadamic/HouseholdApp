@@ -18,8 +18,8 @@ struct GardenView: View {
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
 
-    private var growing:   [GardenPlantDoc] { gardenStore.plants.filter { !$0.isHarvested } }
-    private var harvested: [GardenPlantDoc] { gardenStore.plants.filter { $0.isHarvested } }
+    private var growing:   [GardenPlantDoc] { gardenStore.plants.filter { !$0.isFullyHarvested } }
+    private var harvested: [GardenPlantDoc] { gardenStore.plants.filter { $0.isFullyHarvested } }
     private var gardenChores: [ChoreDoc] {
         choreStore.chores.filter { $0.isGardening == true && !$0.isCompleted }
     }
@@ -45,7 +45,7 @@ struct GardenView: View {
                                         }
                                         .swipeActions(edge: .leading) {
                                             Button {
-                                                gardenStore.toggleHarvested(plant, householdId: householdId)
+                                                gardenStore.markNextHarvested(plant, householdId: householdId)
                                             } label: { Label("Harvested", systemImage: "basket.fill") }
                                             .tint(.green)
                                         }
@@ -90,7 +90,7 @@ struct GardenView: View {
                                         }
                                         .swipeActions(edge: .leading) {
                                             Button {
-                                                gardenStore.toggleHarvested(plant, householdId: householdId)
+                                                gardenStore.unmarkLastHarvested(plant, householdId: householdId)
                                             } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
                                             .tint(.orange)
                                         }
@@ -131,18 +131,24 @@ struct GardenView: View {
     }
 
     private func plantRow(_ plant: GardenPlantDoc) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: plant.isHarvested ? "basket.fill" : "leaf.fill")
+        let done = plant.isFullyHarvested
+        let remaining = plant.pendingHarvests.count
+        return HStack(spacing: 12) {
+            Image(systemName: done ? "basket.fill" : "leaf.fill")
                 .font(.title3)
-                .foregroundStyle(plant.isHarvested ? .brown : .green)
+                .foregroundStyle(done ? .brown : .green)
                 .frame(width: 36, height: 36)
-                .background((plant.isHarvested ? Color.brown : Color.green).opacity(0.1), in: Circle())
+                .background((done ? Color.brown : Color.green).opacity(0.1), in: Circle())
             VStack(alignment: .leading, spacing: 4) {
                 Text(plant.nameSafe)
-                    .strikethrough(plant.isHarvested, color: .secondary)
-                    .foregroundStyle(plant.isHarvested ? .secondary : .primary)
+                    .strikethrough(done, color: .secondary)
+                    .foregroundStyle(done ? .secondary : .primary)
                 HStack(spacing: 6) {
                     readyBadge(plant)
+                    if remaining > 1 {
+                        Text("+\(remaining - 1) more harvest\(remaining - 1 == 1 ? "" : "s")")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
                     if let qty = plant.quantity, !qty.isEmpty {
                         Text(qty).font(.caption2).foregroundStyle(.secondary)
                     }
@@ -150,13 +156,15 @@ struct GardenView: View {
             }
             Spacer()
         }
-        .opacity(plant.isHarvested ? 0.6 : 1.0)
+        .opacity(done ? 0.6 : 1.0)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(plant.nameSafe), \(plant.readyLabel)")
+        .accessibilityLabel("\(plant.nameSafe), \(plant.readyLabel)\(remaining > 1 ? ", \(remaining - 1) more harvests coming" : "")")
     }
 
     private func readyBadge(_ plant: GardenPlantDoc) -> some View {
-        let color: Color = plant.isHarvested ? .brown : (plant.isReady ? .green : .orange)
+        let done  = plant.isFullyHarvested
+        let ready = (plant.nextHarvest?.daysUntilReady ?? 1) <= 0
+        let color: Color = done ? .brown : (ready ? .green : .orange)
         return Text(plant.readyLabel)
             .font(.caption2.weight(.medium))
             .foregroundStyle(color)
