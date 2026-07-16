@@ -1,9 +1,10 @@
 // GardenStore.swift
 // Real-time Firestore store for /households/{id}/gardenPlants.
 //
-// Plants sort by expected-ready date (soonest first). Harvested plants
-// older than 1 week are deleted once per session on the first snapshot.
-// Write failures surface on `errorMessage`.
+// Plants sort by their NEXT pending harvest (soonest first). Fully
+// harvested plants whose last harvest is older than 1 week are deleted
+// once per session on the first snapshot. Write failures surface on
+// `errorMessage`.
 
 import Foundation
 import FirebaseFirestore
@@ -28,7 +29,7 @@ final class GardenStore: ObservableObject {
                     if let error = error { self.errorMessage = error.localizedDescription; return }
                     self.plants = (snapshot?.documents ?? []).compactMap {
                         try? $0.data(as: GardenPlantDoc.self)
-                    }.sorted { $0.expectedReadyDate < $1.expectedReadyDate }
+                    }.sorted { $0.nextHarvestDate < $1.nextHarvestDate }
                     if !self.hasCleanedUp {
                         self.hasCleanedUp = true
                         self.cleanupOldHarvested(householdId: householdId)
@@ -41,9 +42,11 @@ final class GardenStore: ObservableObject {
 
     func save(_ plant: GardenPlantDoc, householdId: String) {
         guard !householdId.isEmpty else { return }
+        var synced = plant
+        synced.syncLegacyFields()
         let ref = db.collection("households").document(householdId)
             .collection("gardenPlants").document(plant.id)
-        do { try ref.setData(from: plant) }
+        do { try ref.setData(from: synced) }
         catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
     }
 
@@ -52,26 +55,47 @@ final class GardenStore: ObservableObject {
             .collection("gardenPlants").document(plant.id).delete()
     }
 
-    func toggleHarvested(_ plant: GardenPlantDoc, householdId: String) {
+    /// Marks the plant's NEXT pending harvest as collected.
+    func markNextHarvested(_ plant: GardenPlantDoc, householdId: String) {
         var updated = plant
-        updated.isHarvested.toggle()
-        updated.harvestedAt = updated.isHarvested ? Date() : nil
+        var all = plant.allHarvests
+        guard let idx = all.firstIndex(where: { !$0.isHarvested }) else { return }
+        all[idx].isHarvested = true
+        all[idx].harvestedAt = Date()
+        updated.harvests = all
         save(updated, householdId: householdId)
     }
 
-    /// First unharvested plant that matches a shopping-item name and is
-    /// ready (or ready within a week) — powers the "growing" hint.
+    /// Undoes the most recently collected harvest.
+    func unmarkLastHarvested(_ plant: GardenPlantDoc, householdId: String) {
+        var updated = plant
+        var all = plant.allHarvests
+        guard let idx = all.enumerated()
+            .filter({ $0.element.isHarvested })
+            .max(by: { ($0.element.harvestedAt ?? .distantPast) < ($1.element.harvestedAt ?? .distantPast) })?
+            .offset else { return }
+        all[idx].isHarvested = false
+        all[idx].harvestedAt = nil
+        updated.harvests = all
+        save(updated, householdId: householdId)
+    }
+
+    /// First plant with a pending harvest ready (or within a week) whose
+    /// name matches a shopping-item name — powers the "growing" hint.
     func readySoonPlant(matching itemName: String) -> GardenPlantDoc? {
         plants.first { $0.isReadySoon && $0.matches(itemName: itemName) }
     }
 
     // MARK: - Auto-cleanup
 
-    /// Deletes plants harvested more than 1 week ago, matching the app's
-    /// other cleanup behavior.
+    /// Deletes plants whose every harvest was collected more than 1 week
+    /// ago, matching the app's other cleanup behavior.
     private func cleanupOldHarvested(householdId: String) {
         guard let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) else { return }
-        let stale = plants.filter { $0.isHarvested && ($0.harvestedAt ?? .distantFuture) < cutoff }
+        let stale = plants.filter { plant in
+            plant.isFullyHarvested &&
+            (plant.allHarvests.compactMap(\.harvestedAt).max() ?? .distantFuture) < cutoff
+        }
         for plant in stale {
             delete(plant, householdId: householdId)
         }
