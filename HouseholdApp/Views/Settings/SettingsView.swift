@@ -136,6 +136,22 @@ struct SettingsView: View {
                     .pickerStyle(.menu)
                 }
 
+                // ── Tab order ──────────────────────────────────────────────────
+                Section {
+                    ForEach(appSettings.tabOrder) { tab in
+                        Label(tab.label, systemImage: tab.icon)
+                    }
+                    .onMove { appSettings.moveTab(from: $0, to: $1) }
+                } header: {
+                    HStack {
+                        Text("Tab Order")
+                        Spacer()
+                        EditButton().font(.caption)
+                    }
+                } footer: {
+                    Text("Tap Edit and drag to rearrange. The first four tabs show in the bottom bar; the rest live under More. Order is per device.")
+                }
+
                 // ── Notifications ──────────────────────────────────────────────
                 Section {
                     Toggle("Due Date Reminders", isOn: $appSettings.notifDueDatesEnabled)

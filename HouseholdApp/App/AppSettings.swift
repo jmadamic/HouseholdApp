@@ -100,6 +100,35 @@ class AppSettings: ObservableObject {
         return h.finalize()
     }
 
+    // ── Tab order (device-local) ──────────────────────────────────────────────
+    // Comma-separated AppTab raw values. Unknown values are dropped and any
+    // missing tabs (e.g. added in a later version) are appended, so the list
+    // is always complete and future-proof.
+
+    @AppStorage("tabOrder")
+    private var tabOrderRaw: String = "" {
+        willSet { objectWillChange.send() }
+    }
+
+    var tabOrder: [AppTab] {
+        var order: [AppTab] = []
+        for piece in tabOrderRaw.split(separator: ",") {
+            if let tab = AppTab(rawValue: String(piece)), !order.contains(tab) {
+                order.append(tab)
+            }
+        }
+        for tab in AppTab.allCases where !order.contains(tab) {
+            order.append(tab)
+        }
+        return order
+    }
+
+    func moveTab(from source: IndexSet, to destination: Int) {
+        var order = tabOrder
+        order.move(fromOffsets: source, toOffset: destination)
+        tabOrderRaw = order.map(\.rawValue).joined(separator: ",")
+    }
+
     // ── Appearance ───────────────────────────────────────────────────────────
     @AppStorage("appearanceMode")
     var appearanceRaw: String = AppAppearance.system.rawValue {

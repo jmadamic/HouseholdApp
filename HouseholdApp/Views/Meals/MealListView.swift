@@ -24,11 +24,19 @@ struct MealListView: View {
         }
     }
 
-    /// Distinct days (start-of-day), ascending. Meals are pre-sorted by the store.
+    /// Meals still to come (today or later) — grouped by day at the top.
+    private var upcomingMeals: [MealDoc] { filteredMeals.filter { !$0.isPast } }
+    /// Past meals auto-complete and sink to a single section at the bottom,
+    /// most recent first.
+    private var pastMeals: [MealDoc] {
+        filteredMeals.filter(\.isPast).sorted { $0.day > $1.day }
+    }
+
+    /// Distinct upcoming days (start-of-day), ascending. Meals are pre-sorted by the store.
     private var days: [Date] {
         var seen = Set<Date>()
         var result: [Date] = []
-        for meal in filteredMeals {
+        for meal in upcomingMeals {
             let d = Calendar.current.startOfDay(for: meal.day)
             if seen.insert(d).inserted { result.append(d) }
         }
@@ -36,7 +44,7 @@ struct MealListView: View {
     }
 
     private func meals(on day: Date) -> [MealDoc] {
-        filteredMeals.filter { Calendar.current.isDate($0.day, inSameDayAs: day) }
+        upcomingMeals.filter { Calendar.current.isDate($0.day, inSameDayAs: day) }
     }
 
     private func dayHeader(_ day: Date) -> String {
@@ -78,6 +86,28 @@ struct MealListView: View {
                                         .foregroundStyle(Calendar.current.isDateInToday(day) ? .blue : .secondary)
                                     Spacer()
                                     Text("\(meals(on: day).count)").font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+
+                        // Past meals live at the bottom, newest first.
+                        if !pastMeals.isEmpty {
+                            Section {
+                                ForEach(pastMeals) { meal in
+                                    MealRowView(meal: meal)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture { mealToEdit = meal }
+                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                            Button(role: .destructive) {
+                                                mealToDelete = meal; showDeleteAlert = true
+                                            } label: { Label("Delete", systemImage: "trash") }
+                                        }
+                                }
+                            } header: {
+                                HStack {
+                                    Text("Completed").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                                    Spacer()
+                                    Text("\(pastMeals.count)").font(.caption).foregroundStyle(.secondary)
                                 }
                             }
                         }

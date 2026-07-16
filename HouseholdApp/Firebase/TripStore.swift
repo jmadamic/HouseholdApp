@@ -2,7 +2,7 @@
 // Real-time Firestore store for /households/{id}/trips.
 //
 // Trips are sorted by start date. Deleting a trip cascades to its
-// packingItems (queried by tripId). Trips that ended more than 1 month ago
+// packingItems (queried by tripId). Trips that ended more than 1 week ago
 // are deleted once per session on the first snapshot. Write failures
 // surface on `errorMessage`.
 
@@ -61,10 +61,10 @@ final class TripStore: ObservableObject {
 
     // MARK: - Auto-cleanup
 
-    /// Deletes trips that ended more than 1 month ago (with their packing
+    /// Deletes trips that ended more than 1 week ago (with their packing
     /// items). Called once per session, matching the other stores.
     private func cleanupOldTrips(householdId: String) {
-        guard let cutoff = Calendar.current.date(byAdding: .month, value: -1, to: Date()) else { return }
+        guard let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) else { return }
         let stale = trips.filter { $0.endDate < cutoff }
         for trip in stale {
             delete(trip, householdId: householdId)

@@ -2,7 +2,7 @@
 // Real-time Firestore store for /households/{id}/meals.
 //
 // Meals are sorted by day, then meal-type order (breakfast → dessert).
-// Meals planned more than 1 month in the past are deleted once per session
+// Meals planned more than 1 week in the past are deleted once per session
 // on the first snapshot. Write failures surface on `errorMessage`.
 
 import Foundation
@@ -57,11 +57,11 @@ final class MealStore: ObservableObject {
 
     // MARK: - Auto-cleanup
 
-    /// Deletes meals whose planned day is more than 1 month in the past.
+    /// Deletes meals whose planned day is more than 1 week in the past.
     /// Called once per session on the first Firestore snapshot,
     /// matching the chore/shopping cleanup behavior.
     private func cleanupOldMeals(householdId: String) {
-        guard let cutoff = Calendar.current.date(byAdding: .month, value: -1, to: Date()) else { return }
+        guard let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) else { return }
         let stale = meals.filter { $0.day < cutoff }
         for meal in stale {
             delete(meal, householdId: householdId)
