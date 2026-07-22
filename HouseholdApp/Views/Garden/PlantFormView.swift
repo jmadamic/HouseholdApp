@@ -92,21 +92,29 @@ struct PlantFormView: View {
 
     @ViewBuilder
     private func harvestRow(_ harvest: Binding<PlantHarvest>) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                DatePicker("Ready", selection: harvest.expectedDate, displayedComponents: .date)
-                if harvest.wrappedValue.isHarvested {
-                    Label("Harvested", systemImage: "basket.fill")
-                        .font(.caption).foregroundStyle(.brown)
-                        .labelStyle(.titleAndIcon)
-                }
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            DatePicker("Ready", selection: harvest.expectedDate, displayedComponents: .date)
+
             TextField("How much? e.g. \"2 zucchinis\", \"some raspberries\"",
                       text: Binding(
                         get: { harvest.wrappedValue.amount ?? "" },
                         set: { harvest.wrappedValue.amount = $0.isEmpty ? nil : $0 }
                       ))
                 .font(.subheadline)
+
+            // Mark this batch as picked (or undo). Same effect as the
+            // "Harvested" swipe in the Garden list, available while editing.
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                harvest.wrappedValue.isHarvested.toggle()
+                harvest.wrappedValue.harvestedAt = harvest.wrappedValue.isHarvested ? Date() : nil
+            } label: {
+                Label(harvest.wrappedValue.isHarvested ? "Harvested — tap to undo" : "Mark as Harvested",
+                      systemImage: harvest.wrappedValue.isHarvested ? "checkmark.circle.fill" : "basket")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(harvest.wrappedValue.isHarvested ? .green : .brown)
+            }
+            .buttonStyle(.borderless)
         }
         .padding(.vertical, 2)
     }
