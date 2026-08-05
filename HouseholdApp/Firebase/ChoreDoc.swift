@@ -32,6 +32,10 @@ struct ChoreDoc: Codable, Identifiable {
     /// True for gardening chores — they show in the Chores tab like any
     /// other, and additionally under the Garden tab.
     var isGardening: Bool? = nil
+    /// Configuration for the custom repeat modes (every N units / ordinal
+    /// weekday). Only meaningful when repeatIntervalEnum is a custom case.
+    /// Optional + defaulted for backward compat.
+    var customRepeat: CustomRepeatRule? = nil
 
     // Computed display helpers (same logic as old CoreDataHelpers)
     var titleSafe: String { title }
@@ -49,6 +53,23 @@ struct ChoreDoc: Codable, Identifiable {
     var repeatIntervalEnum: RepeatInterval {
         get { RepeatInterval(rawValue: repeatInterval) ?? .none }
         set { repeatInterval = newValue.rawValue }
+    }
+
+    /// Label for the repeat badge: the preset name, or the custom rule's
+    /// summary ("Every 6 months", "Third Tuesday every month").
+    var repeatLabel: String {
+        let kind = repeatIntervalEnum
+        if kind.isCustom, let rule = customRepeat { return rule.label(for: kind) }
+        return kind.label
+    }
+
+    /// The chore's next due date after completion, honoring custom rules.
+    func nextDueDate(from date: Date) -> Date? {
+        let kind = repeatIntervalEnum
+        if kind.isCustom {
+            return customRepeat?.nextDate(from: date, mode: kind)
+        }
+        return kind.nextDate(from: date)
     }
 
     var dueDateLabel: String? {

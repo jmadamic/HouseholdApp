@@ -68,7 +68,7 @@ final class ChoreStore: ObservableObject {
         let interval = updated.repeatIntervalEnum
         if interval != .none {
             let base = updated.dueDate ?? Date()
-            updated.dueDate = interval.nextDate(from: base)
+            updated.dueDate = updated.nextDueDate(from: base)
             updated.dueDateType = Int16(DueDateType.specificDate.rawValue)
             updated.isCompleted = false
             updated.completedAt = nil
