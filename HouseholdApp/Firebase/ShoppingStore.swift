@@ -30,6 +30,7 @@ final class ShoppingStore: ObservableObject {
                     self.items = (snapshot?.documents ?? []).compactMap {
                         try? $0.data(as: ShoppingItemDoc.self)
                     }.sorted { ($0.sortOrder, $0.createdAt) < ($1.sortOrder, $1.createdAt) }
+                    NotificationManager.shared.rescheduleAllShopping(self.items)
                     if !self.hasCleanedUp {
                         self.hasCleanedUp = true
                         self.cleanupOldPurchased(householdId: householdId)
@@ -46,11 +47,13 @@ final class ShoppingStore: ObservableObject {
             .collection("shoppingItems").document(item.id)
         do { try ref.setData(from: item) }
         catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
+        NotificationManager.shared.schedule(item: item)   // immediate, before snapshot
     }
 
     func delete(_ item: ShoppingItemDoc, householdId: String) {
         db.collection("households").document(householdId)
             .collection("shoppingItems").document(item.id).delete()
+        NotificationManager.shared.cancel(shoppingItemId: item.id)
     }
 
     func markPurchased(_ item: ShoppingItemDoc, householdId: String) {

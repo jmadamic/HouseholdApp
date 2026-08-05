@@ -16,12 +16,12 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 | **Completion tracking** | Per-person history stored for every completion |
 | **Household sharing** | One person creates the household; others join with a 6-character invite code from Settings. Changes sync to every device in real time |
 | **Shared member names** | Member names are stored on the household document, so renaming someone updates every device |
-| **Shopping list** | Separate tab for groceries/household items — group by store or by type, with assignee support. Stores and item types are fully editable with custom icons |
+| **Shopping list** | Separate tab for groceries/household items — group by store or by type, with assignee support. Stores and item types are fully editable with custom icons. Items can carry an optional "need by" date/time that reminds whoever they're assigned to |
 | **Packing lists** | Create trips/events with dates and pack per-section (Clothing, Food, Toiletries, custom…). Meals tied to a trip auto-add their ingredients to the Food section; chores can be tied to a trip too (e.g. "turn off water heater before leaving") |
 | **Meal planning** | Plan meals by day and type (breakfast, brunch, lunch, dinner, snack, dessert) with an optional dish name and assigned cook(s). Track ingredients you have vs. need — missing ones can be added to the grocery list in one tap, and each grocery item links back to its meal. Meals auto-complete once their day passes (no checkbox). Attach a recipe link and/or typed instructions |
 | **My Meals library** | Save any meal for repeated use, then plan it again with one tap (prefills ingredients, recipe, instructions). Share a meal — full details as text — via the standard share sheet |
 | **Garden** | Track what you're growing with multiple harvests per plant, each with its own date and amount ("2 zucchinis", "some raspberries") — or mark herbs as "always ready" to pick as needed. Shopping-list items matching a crop that's ready (or close) show a "Growing" hint with the expected amount so you can hold off buying, and the add-item form has a "See what's ready soon" browser listing everything ripening in the next two weeks. Gardening chores appear in both the Chores tab and the Garden tab |
-| **Local notifications** | Due-date reminders at 9 am — or at the chore's own time when one is set (day-of and/or day-before), filterable to my/shared/all chores in Settings |
+| **Local notifications** | Due-date reminders for chores and need-by reminders for shopping items at 9 am — or at the item's own time when one is set (day-of and/or day-before), filterable to my/shared/all in Settings |
 | **Auto-cleanup** | Completed chores, purchased items, past meals, ended trips, and harvested plants are deleted automatically after 1 week |
 | **Easy UI** | Swipe to complete or delete; tap to edit; colour-coded urgency sections; VoiceOver labels and 44 pt tap targets throughout |
 

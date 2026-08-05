@@ -195,6 +195,7 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .onChange(of: appSettings.notifSettingsHash) { _, _ in
                 NotificationManager.shared.rescheduleAll(choreStore.chores)
+                NotificationManager.shared.rescheduleAllShopping(shoppingStore.items)
             }
             .alert("Delete All Data?", isPresented: $showingDeleteAlert) {
                 Button("Delete Everything", role: .destructive, action: deleteAll)
