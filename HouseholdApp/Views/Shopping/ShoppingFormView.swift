@@ -155,14 +155,14 @@ struct ShoppingFormView: View {
                 }
             }
             .sheet(isPresented: $showingAddStore) {
-                StoreFormView(originalName: nil) { store = $0 }
+                StoreFormView(originalName: nil, onSave: { store = $0 })
             }
             .sheet(item: Binding(
                 get: { storeToEdit.map { IdentifiableString(value: $0) } },
                 set: { storeToEdit = $0?.value }
             )) { w in StoreFormView(originalName: w.value, onDelete: { store = "" }, onSave: { store = $0 }) }
             .sheet(isPresented: $showingAddType) {
-                ItemTypeFormView(originalName: nil) { itemType = $0 }
+                ItemTypeFormView(originalName: nil, onSave: { itemType = $0 })
             }
             .sheet(item: Binding(
                 get: { typeToEdit.map { IdentifiableString(value: $0) } },
