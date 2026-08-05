@@ -16,6 +16,7 @@ struct HouseholdAppApp: App {
     @StateObject private var tripStore         = TripStore()
     @StateObject private var packingStore      = PackingStore()
     @StateObject private var gardenStore       = GardenStore()
+    @StateObject private var wishStore         = WishStore()
     @StateObject private var router            = TabRouter()
 
     init() {
@@ -49,6 +50,7 @@ struct HouseholdAppApp: App {
                 .environmentObject(tripStore)
                 .environmentObject(packingStore)
                 .environmentObject(gardenStore)
+                .environmentObject(wishStore)
                 .environmentObject(router)
                 .onAppear(perform: onRootAppear)
                 .task { await NotificationManager.shared.requestPermissionIfNeeded() }
@@ -87,5 +89,6 @@ struct HouseholdAppApp: App {
         tripStore.startListening(householdId: hid)
         packingStore.startListening(householdId: hid)
         gardenStore.startListening(householdId: hid)
+        wishStore.startListening(householdId: hid)
     }
 }

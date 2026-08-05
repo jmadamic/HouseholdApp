@@ -15,6 +15,9 @@ struct ShoppingFormView: View {
     @EnvironmentObject private var householdCtrl: HouseholdController
 
     let item: ShoppingItemDoc?
+    /// True when `item` is a prefilled draft (e.g. from the Looking For
+    /// tab) rather than an existing saved item — affects the title only.
+    var isPrefilledDraft: Bool = false
 
     @State private var name            = ""
     @State private var quantity        = ""
@@ -140,7 +143,7 @@ struct ShoppingFormView: View {
                     TextEditor(text: $notes).frame(minHeight: 60)
                 }
             }
-            .navigationTitle(item == nil ? "New Item" : "Edit Item")
+            .navigationTitle(item == nil || isPrefilledDraft ? "New Item" : "Edit Item")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

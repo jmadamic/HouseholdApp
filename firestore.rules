@@ -84,6 +84,9 @@ service cloud.firestore {
       match /gardenPlants/{plantId} {
         allow read, write: if isMember(householdId);
       }
+      match /wishes/{wishId} {
+        allow read, write: if isMember(householdId);
+      }
     }
 
     // ── invites/{code} ─────────────────────────────────────────────────────
