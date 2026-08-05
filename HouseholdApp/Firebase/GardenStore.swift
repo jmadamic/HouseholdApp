@@ -86,6 +86,21 @@ final class GardenStore: ObservableObject {
         plants.first { $0.isReadySoon && $0.matches(itemName: itemName) }
     }
 
+    /// Everything worth knowing about before a grocery run: plants ready
+    /// now or coming up within `days`, soonest first. Always-ready plants
+    /// (herbs) sort to the top. Powers the "What's ready soon" browser in
+    /// the shopping form.
+    func readySoon(withinDays days: Int = 14) -> [GardenPlantDoc] {
+        plants
+            .filter { plant in
+                guard !plant.isFullyHarvested else { return false }
+                if plant.alwaysReady { return true }
+                guard let next = plant.nextHarvest else { return false }
+                return next.daysUntilReady <= days
+            }
+            .sorted { $0.nextHarvestDate < $1.nextHarvestDate }
+    }
+
     // MARK: - Auto-cleanup
 
     /// Deletes plants whose every harvest was collected more than 1 week

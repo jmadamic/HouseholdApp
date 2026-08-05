@@ -11,6 +11,7 @@ struct ShoppingFormView: View {
     @Environment(\.dismiss)           private var dismiss
     @EnvironmentObject private var appSettings:   AppSettings
     @EnvironmentObject private var shoppingStore: ShoppingStore
+    @EnvironmentObject private var gardenStore:   GardenStore
     @EnvironmentObject private var householdCtrl: HouseholdController
 
     let item: ShoppingItemDoc?
@@ -26,6 +27,7 @@ struct ShoppingFormView: View {
     @State private var storeToEdit: String? = nil
     @State private var showingAddType  = false
     @State private var typeToEdit: String? = nil
+    @State private var showingReadySoon = false
 
     private var isValid: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty }
     private var householdId: String { householdCtrl.household?.id ?? "" }
@@ -36,6 +38,33 @@ struct ShoppingFormView: View {
                 Section {
                     TextField("Item name", text: $name)
                     TextField("Quantity (optional)", text: $quantity).textInputAutocapitalization(.never)
+                }
+
+                Section {
+                    Button {
+                        showingReadySoon = true
+                    } label: {
+                        HStack {
+                            Label("See what's ready soon", systemImage: "leaf.fill")
+                                .foregroundStyle(.green)
+                            Spacer()
+                            if !gardenStore.readySoon().isEmpty {
+                                Text("\(gardenStore.readySoon().count)")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption).foregroundStyle(.tertiary)
+                        }
+                    }
+                    // Inline heads-up when what you're typing is already growing.
+                    if let plant = gardenStore.readySoonPlant(matching: name) {
+                        Label("\(plant.nameSafe) — \(plant.readyLabel)", systemImage: "exclamationmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                } footer: {
+                    Text("Check the garden before you shop — you may not need to buy it.")
                 }
 
                 Section("Who's buying") {
@@ -98,6 +127,11 @@ struct ShoppingFormView: View {
                 }
             }
             .onAppear(perform: populate)
+            .sheet(isPresented: $showingReadySoon) {
+                ReadySoonView { picked in
+                    if name.trimmingCharacters(in: .whitespaces).isEmpty { name = picked }
+                }
+            }
             .sheet(isPresented: $showingAddStore) {
                 StoreFormView(originalName: nil) { store = $0 }
             }
