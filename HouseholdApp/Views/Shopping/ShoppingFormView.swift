@@ -28,6 +28,9 @@ struct ShoppingFormView: View {
     @State private var showingAddType  = false
     @State private var typeToEdit: String? = nil
     @State private var showingReadySoon = false
+    @State private var hasNeedBy    = false
+    @State private var needByDate   = Calendar.current.startOfDay(for: .now)
+    @State private var hasNeedByTime = false
 
     private var isValid: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty }
     private var householdId: String { householdCtrl.household?.id ?? "" }
@@ -77,6 +80,25 @@ struct ShoppingFormView: View {
                     }
                     if !selectedMembers.isEmpty {
                         Button("Select All") { selectedMembers = [] }.foregroundStyle(.blue)
+                    }
+                }
+
+                Section {
+                    Toggle("Need by a certain date", isOn: $hasNeedBy)
+                    if hasNeedBy {
+                        DatePicker("Need by", selection: $needByDate, displayedComponents: .date)
+                        Toggle("At a specific time", isOn: $hasNeedByTime)
+                        if hasNeedByTime {
+                            DatePicker("Time", selection: $needByDate, displayedComponents: .hourAndMinute)
+                        }
+                    }
+                } header: {
+                    Text("Deadline")
+                } footer: {
+                    if hasNeedBy {
+                        Text("Whoever this item is assigned to gets a reminder\(hasNeedByTime ? " at that time" : " at 9am") — and the day before, per your notification settings.")
+                    } else {
+                        Text("Optional — for things that must be picked up by a certain date.")
                     }
                 }
 
@@ -167,6 +189,11 @@ struct ShoppingFormView: View {
         guard let i = item else { return }
         name = i.name; quantity = i.quantity ?? ""; store = i.store ?? ""
         itemType = i.itemType ?? ""; selectedMembers = Set(i.assignedToMembers); notes = i.notes ?? ""
+        if let due = i.needByDate {
+            hasNeedBy     = true
+            needByDate    = due
+            hasNeedByTime = i.hasNeedByTime ?? false
+        }
     }
 
     private func save() {
@@ -181,6 +208,12 @@ struct ShoppingFormView: View {
         target.itemType         = itemType.isEmpty ? nil : itemType
         target.assignedToMembers = selectedMembers.sorted()
         target.notes            = notes.isEmpty ? nil : notes
+        // Without an explicit time, normalize to start of day so the 9am
+        // reminder default behaves predictably.
+        target.needByDate       = hasNeedBy
+            ? (hasNeedByTime ? needByDate : Calendar.current.startOfDay(for: needByDate))
+            : nil
+        target.hasNeedByTime    = hasNeedBy && hasNeedByTime
         shoppingStore.save(target, householdId: householdId)
         dismiss()
     }

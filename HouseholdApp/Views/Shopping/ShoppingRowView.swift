@@ -86,6 +86,11 @@ struct ShoppingRowView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
+                if let needBy = item.needByLabel, !item.isPurchased {
+                    Label(needBy, systemImage: item.isNeedByOverdue ? "exclamationmark.circle.fill" : "clock")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(item.isNeedByOverdue ? .red : .secondary)
+                }
                 if let store = item.store, !store.isEmpty {
                     Text(store).font(.caption).foregroundStyle(.secondary)
                 }
@@ -103,6 +108,9 @@ struct ShoppingRowView: View {
         if let qty = item.quantitySafe { parts.append("quantity \(qty)") }
         parts.append(item.isPurchased ? "purchased" : "not purchased")
         if let store = item.store, !store.isEmpty { parts.append("at \(store)") }
+        if let needBy = item.needByLabel, !item.isPurchased {
+            parts.append(item.isNeedByOverdue ? "overdue, needed \(needBy)" : "needed by \(needBy)")
+        }
         let indices = item.assignedToMembers.sorted()
         if indices.isEmpty {
             parts.append("for everyone")

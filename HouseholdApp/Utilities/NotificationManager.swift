@@ -1,11 +1,16 @@
 // NotificationManager.swift
-// Schedules and cancels local due-date reminders for chores.
+// Schedules and cancels local due-date reminders for chores and for
+// shopping items that have a "need by" date.
 //
-// Notification IDs follow the pattern:  hh-chore-{choreId}-{index}
+// Notification IDs follow the pattern:  hh-{kind}-{docId}-{index}
+//   kind  = "chore" or "shop"
 //   index 0 = day-of / period-start reminder
 //   index 1 = day-before reminder (specificDate only)
 //
-// All methods are @MainActor-safe and may be called freely from ChoreStore.
+// Bulk rescheduling is scoped BY PREFIX so rebuilding chore reminders never
+// clears shopping ones (and vice versa).
+//
+// All methods are @MainActor-safe and may be called freely from the stores.
 
 import Foundation
 import UserNotifications
@@ -17,7 +22,8 @@ final class NotificationManager {
     private init() {}
 
     private let center = UNUserNotificationCenter.current()
-    private let idPrefix = "hh-chore-"
+    private let idPrefix     = "hh-chore-"
+    private let shopIdPrefix = "hh-shop-"
 
     // MARK: - Permission
 
@@ -34,9 +40,27 @@ final class NotificationManager {
     /// Call this after a Firestore snapshot so remote changes (e.g. wife completing a chore)
     /// are reflected in the local notification queue.
     func rescheduleAll(_ chores: [ChoreDoc]) {
-        center.removeAllPendingNotificationRequests()
+        // Scoped to chore IDs so shopping reminders survive.
+        removePending(withPrefix: idPrefix)
         for chore in chores where !chore.isCompleted {
             addRequests(for: chore)
+        }
+    }
+
+    /// Same as rescheduleAll(_:) but for shopping items with a need-by date.
+    func rescheduleAllShopping(_ items: [ShoppingItemDoc]) {
+        removePending(withPrefix: shopIdPrefix)
+        for item in items where !item.isPurchased {
+            addRequests(forItem: item)
+        }
+    }
+
+    /// Removes every pending request whose identifier starts with `prefix`.
+    private func removePending(withPrefix prefix: String) {
+        center.getPendingNotificationRequests { requests in
+            let ids = requests.map(\.identifier).filter { $0.hasPrefix(prefix) }
+            guard !ids.isEmpty else { return }
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
         }
     }
 
@@ -53,6 +77,19 @@ final class NotificationManager {
     /// Removes all pending notifications for a single chore.
     func cancel(choreId: String) {
         center.removePendingNotificationRequests(withIdentifiers: pendingIds(for: choreId))
+    }
+
+    /// Schedules (or replaces) the need-by reminders for one shopping item.
+    func schedule(item: ShoppingItemDoc) {
+        cancel(shoppingItemId: item.id)
+        guard !item.isPurchased else { return }
+        addRequests(forItem: item)
+    }
+
+    /// Removes all pending notifications for a single shopping item.
+    func cancel(shoppingItemId: String) {
+        center.removePendingNotificationRequests(
+            withIdentifiers: (0..<2).map { "\(shopIdPrefix)\(shoppingItemId)-\($0)" })
     }
 
     // MARK: - Private
@@ -160,6 +197,61 @@ final class NotificationManager {
             let id      = "\(idPrefix)\(chore.id)-\(entry.idx)"
             let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
 
+            center.add(request) { if let error = $0 { print("[Notifications] Failed to add \(id): \(error)") } }
+        }
+    }
+
+    // MARK: - Shopping need-by reminders
+
+    /// Builds the reminders for a shopping item's need-by date, honoring the
+    /// same device preferences as chores (enabled, who it's for, day-of /
+    /// day-before). Reminders go to whoever the item is assigned to.
+    private func addRequests(forItem item: ShoppingItemDoc) {
+        guard prefDueDatesEnabled else { return }
+        guard let due = item.needByDate else { return }
+
+        switch prefChoreFilter {
+        case .mine:
+            // Skip items assigned to specific people that don't include me.
+            if !item.assignedToMembers.isEmpty
+                && !item.assignedToMembers.contains(prefMyMemberIndex) { return }
+        case .shared:
+            // Skip items assigned to specific people (not "everyone").
+            if !item.assignedToMembers.isEmpty { return }
+        case .all:
+            break
+        }
+
+        let cal = Calendar.current
+        let now = Date()
+        // With an explicit time, fire at it; otherwise 9am like chores.
+        let timed = item.hasNeedByTime == true
+        let timeLabel = timed ? " by \(due.formatted(date: .omitted, time: .shortened))" : ""
+
+        var entries: [(date: Date, body: String, idx: Int)] = []
+        if prefDayOf,
+           let dayOf = timed ? due : cal.date(bySettingHour: 9, minute: 0, second: 0, of: due),
+           dayOf > now {
+            entries.append((dayOf, "Needed today\(timeLabel)", 0))
+        }
+        if prefDayBefore,
+           let prev = cal.date(byAdding: .day, value: -1, to: due),
+           let eve  = timed ? prev : cal.date(bySettingHour: 9, minute: 0, second: 0, of: prev),
+           eve > now {
+            entries.append((eve, "Needed tomorrow\(timeLabel)", 1))
+        }
+
+        for entry in entries {
+            let content      = UNMutableNotificationContent()
+            content.title    = item.nameSafe
+            content.body     = entry.body
+            content.sound    = .default
+            content.userInfo = ["shoppingItemId": item.id]
+
+            let comps   = cal.dateComponents([.year, .month, .day, .hour, .minute], from: entry.date)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+            let id      = "\(shopIdPrefix)\(item.id)-\(entry.idx)"
+            let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
             center.add(request) { if let error = $0 { print("[Notifications] Failed to add \(id): \(error)") } }
         }
     }
