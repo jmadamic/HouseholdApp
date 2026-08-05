@@ -21,6 +21,7 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 | **Meal planning** | Plan meals by day and type (breakfast, brunch, lunch, dinner, snack, dessert) with an optional dish name and assigned cook(s). Track ingredients you have vs. need — missing ones can be added to the grocery list in one tap, and each grocery item links back to its meal. Meals auto-complete once their day passes (no checkbox). Attach a recipe link and/or typed instructions |
 | **My Meals library** | Save any meal for repeated use, then plan it again with one tap (prefills ingredients, recipe, instructions). Share a meal — full details as text — via the standard share sheet |
 | **Garden** | Track what you're growing with multiple harvests per plant, each with its own date and amount ("2 zucchinis", "some raspberries") — or mark herbs as "always ready" to pick as needed. Shopping-list items matching a crop that's ready (or close) show a "Growing" hint with the expected amount so you can hold off buying, and the add-item form has a "See what's ready soon" browser listing everything ripening in the next two weeks. Gardening chores appear in both the Chores tab and the Garden tab |
+| **Looking For** | A collaborative wishlist for things you're researching (a new bed, a dishwasher). Track must-haves vs nice-to-haves, dated research notes attributed to whoever wrote them (you can edit your own), and links. When you decide, "Add to Shopping List" prefills a shopping item from what you've gathered |
 | **Local notifications** | Due-date reminders for chores and need-by reminders for shopping items at 9 am — or at the item's own time when one is set (day-of and/or day-before), filterable to my/shared/all in Settings |
 | **Auto-cleanup** | Completed chores, purchased items, past meals, ended trips, and harvested plants are deleted automatically after 1 week |
 | **Easy UI** | Swipe to complete or delete; tap to edit; colour-coded urgency sections; VoiceOver labels and 44 pt tap targets throughout |
@@ -70,12 +71,13 @@ HouseholdApp/
     │   └── NotificationManager.swift   ← Local due-date reminders (UNUserNotificationCenter)
     │
     └── Views/
-        ├── RootView.swift              ← TabView: Chores | Shopping | Meals | Garden | Packing | Settings (+ TabRouter for cross-tab links)
+        ├── RootView.swift              ← TabView: Chores | Shopping | Meals | Garden | Packing | Looking For | Settings (order configurable) (+ TabRouter for cross-tab links)
         ├── Auth/                       ← Sign-in and household setup screens
         ├── ChoreList/ + ChoreForm/     ← Chore list, rows, add/edit sheet
         ├── Categories/                 ← Category grid and add/edit form
         ├── Shopping/                   ← Shopping list, rows, item/store/type forms
         ├── Garden/                     ← Growing plants with ready dates, garden chores
+        ├── Wishes/                     ← "Looking For" list: criteria, dated notes, links
         ├── Packing/                    ← Trip list, trip form, trip detail (sections, linked meals/chores)
         ├── Meals/                      ← Meal list, rows, add/edit sheet, My Meals library (saved meals)
         └── Settings/                   ← Members, invite code, notifications, data summary
@@ -141,7 +143,7 @@ Each person uses their own device and their own (anonymous or Google) Firebase a
 
 ### How it works under the hood
 
-- All data lives under a single Firestore document tree: `/households/{householdId}` with subcollections `chores`, `categories`, `completions`, `shoppingItems`, `meals`, `savedMeals`, `trips`, `packingItems`, and `gardenPlants`.
+- All data lives under a single Firestore document tree: `/households/{householdId}` with subcollections `chores`, `categories`, `completions`, `shoppingItems`, `meals`, `savedMeals`, `trips`, `packingItems`, `gardenPlants`, and `wishes`.
 - The household doc holds `memberIds` (Firebase Auth UIDs). Security rules only allow reads/writes when `request.auth.uid` is in that array.
 - Invite codes live at `/invites/{code} → householdId`. Only household members can create or rotate codes; joining adds your UID to `memberIds` (and may touch nothing else).
 - Each store (`ChoreStore`, `ShoppingStore`, `MealStore`, `CategoryStore`) keeps a snapshot listener open, so remote edits appear immediately; Firestore's local cache keeps the app working offline.
@@ -212,7 +214,7 @@ Categories: `name`, `colorHex`, `iconName`, `sortOrder`. Completion logs: `chore
 - Joining (self-add to `memberIds`) may touch **only** that field.
 - Invite codes can only be created by the household owner (same-batch creation) or an existing member (rotation) — prevents invite forgery.
 - Invites allow `get` by exact code only — `list` is denied, so codes can't be enumerated by querying the collection.
-- Every subcollection (`chores`, `categories`, `completions`, `shoppingItems`, `meals`, `savedMeals`, `trips`, `packingItems`, `gardenPlants`) is member-only.
+- Every subcollection (`chores`, `categories`, `completions`, `shoppingItems`, `meals`, `savedMeals`, `trips`, `packingItems`, `gardenPlants`, `wishes`) is member-only.
 
 ---
 

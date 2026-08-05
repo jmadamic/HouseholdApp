@@ -204,7 +204,7 @@ final class HouseholdController: ObservableObject {
         // and anything missed here is orphaned forever once the household
         // doc (and with it, all member access) is gone.
         let subcollections = ["chores", "categories", "completions",
-                              "shoppingItems", "meals", "trips", "packingItems", "savedMeals", "gardenPlants"]
+                              "shoppingItems", "meals", "trips", "packingItems", "savedMeals", "gardenPlants", "wishes"]
 
         // Delete all subcollection documents first (Firestore doesn't cascade).
         for sub in subcollections {

@@ -8,7 +8,7 @@ import SwiftUI
 /// Every tab in the app. Raw values are stored in UserDefaults (tab order,
 /// selected tab) — do not rename existing cases.
 enum AppTab: String, CaseIterable, Identifiable, Codable {
-    case chores, shopping, meals, garden, packing, settings
+    case chores, shopping, meals, garden, packing, wishes, settings
 
     var id: String { rawValue }
 
@@ -19,6 +19,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .meals:    return "Meals"
         case .garden:   return "Garden"
         case .packing:  return "Packing"
+        case .wishes:   return "Looking For"
         case .settings: return "Settings"
         }
     }
@@ -30,6 +31,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .meals:    return "fork.knife"
         case .garden:   return "leaf.fill"
         case .packing:  return "suitcase.rolling.fill"
+        case .wishes:   return "sparkles"
         case .settings: return "gearshape.fill"
         }
     }
@@ -79,6 +81,7 @@ struct RootView: View {
         case .meals:    MealListView()
         case .garden:   GardenView()
         case .packing:  PackingListView()
+        case .wishes:   WishListView()
         case .settings: SettingsView()
         }
     }
