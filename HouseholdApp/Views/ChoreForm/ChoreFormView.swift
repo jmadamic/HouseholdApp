@@ -24,6 +24,7 @@ struct ChoreFormView: View {
     @State private var selectedCatId: String? = nil
     @State private var tripId: String?        = nil
     @State private var hasDueTime  = false
+    @State private var customRepeat = CustomRepeatRule()
     @State private var isGardening = false
 
     @State private var showingAddCategory = false
@@ -90,11 +91,49 @@ struct ChoreFormView: View {
                     }
                 }
 
-                Section("Repeat") {
+                Section {
                     Picker("Repeats", selection: $repeatInt) {
-                        ForEach(RepeatInterval.allCases) { interval in
+                        ForEach(RepeatInterval.presets) { interval in
                             Text(interval.label).tag(interval)
                         }
+                        Divider()
+                        Text("Every N days/weeks/months…").tag(RepeatInterval.customEvery)
+                        Text("Ordinal weekday (e.g. third Tuesday)").tag(RepeatInterval.customWeekday)
+                    }
+
+                    if repeatInt == .customEvery {
+                        Stepper(value: $customRepeat.interval, in: 1...99) {
+                            Text("Every \(customRepeat.interval) \(customRepeat.unit.label(count: customRepeat.interval))")
+                        }
+                        Picker("Unit", selection: $customRepeat.unit) {
+                            ForEach(RepeatUnit.allCases) { unit in
+                                Text(unit.label(count: 2).capitalized).tag(unit)
+                            }
+                        }
+                    }
+
+                    if repeatInt == .customWeekday {
+                        Picker("Which", selection: $customRepeat.ordinal) {
+                            ForEach(WeekdayOrdinal.allCases) { ord in
+                                Text(ord.label).tag(ord)
+                            }
+                        }
+                        Picker("Weekday", selection: $customRepeat.weekday) {
+                            ForEach(1...7, id: \.self) { day in
+                                Text(Calendar.current.weekdaySymbols[day - 1]).tag(day)
+                            }
+                        }
+                        Stepper(value: $customRepeat.monthInterval, in: 1...24) {
+                            Text(customRepeat.monthInterval == 1
+                                 ? "Every month"
+                                 : "Every \(customRepeat.monthInterval) months")
+                        }
+                    }
+                } header: {
+                    Text("Repeat")
+                } footer: {
+                    if repeatInt.isCustom {
+                        Text("Repeats: \(customRepeat.label(for: repeatInt)). After you complete it, the next due date is calculated from this rule.")
                     }
                 }
 
@@ -177,6 +216,7 @@ struct ChoreFormView: View {
         selectedCatId  = c.categoryId
         tripId         = c.tripId
         hasDueTime     = c.hasDueTime ?? false
+        if let rule = c.customRepeat { customRepeat = rule }
         isGardening    = c.isGardening ?? false
     }
 
@@ -198,6 +238,7 @@ struct ChoreFormView: View {
                                     : (timed ? dueDate : Calendar.current.startOfDay(for: dueDate))
         target.hasDueTime         = timed
         target.repeatIntervalEnum = repeatInt
+        target.customRepeat       = repeatInt.isCustom ? customRepeat : nil
         target.categoryId         = selectedCatId
         target.tripId             = tripId
         target.isGardening        = isGardening

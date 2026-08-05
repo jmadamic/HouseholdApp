@@ -103,7 +103,7 @@ struct ChoreRowView: View {
     }
 
     private var repeatBadge: some View {
-        Label(chore.repeatIntervalEnum.label, systemImage: "repeat")
+        Label(chore.repeatLabel, systemImage: "repeat")
             .font(.caption2).foregroundStyle(.secondary)
     }
 
