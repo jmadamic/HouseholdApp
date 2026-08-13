@@ -51,6 +51,12 @@
         </dict>
     </array>
 
+    <!-- Voice capture: dictate a chore/item instead of typing it -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Lets you add chores and shopping items by speaking instead of typing.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Turns what you say into a chore or shopping item. Speech is transcribed on this device.</string>
+
     <!-- Blank launch screen (no storyboard needed for SwiftUI) -->
     <key>UILaunchScreen</key>
     <dict/>

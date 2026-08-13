@@ -13,6 +13,7 @@ struct ChoreListView: View {
     @State private var choreToEdit: ChoreDoc?  = nil
     @State private var showDeleteAlert = false
     @State private var choreToDelete: ChoreDoc? = nil
+    @State private var showingVoice = false
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
 
@@ -71,6 +72,12 @@ struct ChoreListView: View {
             }
             .navigationTitle("Chores")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { showingVoice = true } label: {
+                        Image(systemName: "mic.fill").font(.title3)
+                    }
+                    .accessibilityLabel("Add by voice")
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { showingAddChore = true } label: {
                         Image(systemName: "plus.circle.fill").font(.title2)
@@ -79,6 +86,7 @@ struct ChoreListView: View {
                 }
             }
             .sheet(isPresented: $showingAddChore)   { ChoreFormView(chore: nil) }
+            .sheet(isPresented: $showingVoice)      { VoiceCaptureView() }
             .sheet(item: $choreToEdit)              { ChoreFormView(chore: $0) }
             .alert("Delete Chore?", isPresented: $showDeleteAlert, presenting: choreToDelete) { chore in
                 Button("Delete", role: .destructive) {
