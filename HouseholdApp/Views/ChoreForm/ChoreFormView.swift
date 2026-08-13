@@ -14,6 +14,9 @@ struct ChoreFormView: View {
     /// When true and creating a new chore, the Gardening toggle starts on
     /// (used by the Garden tab's "add chore" button).
     var defaultGardening: Bool = false
+    /// True when `chore` is a prefilled draft (e.g. from voice entry)
+    /// rather than an existing saved chore — affects the title only.
+    var isPrefilledDraft: Bool = false
 
     @State private var title           = ""
     @State private var notes           = ""
@@ -167,7 +170,7 @@ struct ChoreFormView: View {
                     TextEditor(text: $notes).frame(minHeight: 80)
                 }
             }
-            .navigationTitle(chore == nil ? "New Chore" : "Edit Chore")
+            .navigationTitle(chore == nil || isPrefilledDraft ? "New Chore" : "Edit Chore")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

@@ -17,6 +17,7 @@ struct ShoppingListView: View {
     @State private var showingAddItem    = false
     @State private var itemToEdit: ShoppingItemDoc? = nil
     @State private var showingClearAlert = false
+    @State private var showingVoice = false
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
 
@@ -140,6 +141,12 @@ struct ShoppingListView: View {
             .navigationTitle("Shopping")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
+                    Button { showingVoice = true } label: {
+                        Image(systemName: "mic.fill").font(.title3)
+                    }
+                    .accessibilityLabel("Add by voice")
+                }
+                ToolbarItem(placement: .navigationBarLeading) {
                     if !purchased.isEmpty {
                         Button(role: .destructive) { showingClearAlert = true } label: {
                             Text("Clear").font(.subheadline)
@@ -155,6 +162,7 @@ struct ShoppingListView: View {
                 }
             }
             .sheet(isPresented: $showingAddItem) { ShoppingFormView(item: nil) }
+            .sheet(isPresented: $showingVoice)   { VoiceCaptureView() }
             .sheet(item: $itemToEdit)            { ShoppingFormView(item: $0) }
             .alert("Clear Purchased Items?", isPresented: $showingClearAlert) {
                 Button("Clear All", role: .destructive) {

@@ -22,6 +22,7 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 | **My Meals library** | Save any meal for repeated use, then plan it again with one tap (prefills ingredients, recipe, instructions). Share a meal — full details as text — via the standard share sheet |
 | **Garden** | Track what you're growing with multiple harvests per plant, each with its own date and amount ("2 zucchinis", "some raspberries") — or mark herbs as "always ready" to pick as needed. Shopping-list items matching a crop that's ready (or close) show a "Growing" hint with the expected amount so you can hold off buying, and the add-item form has a "See what's ready soon" browser listing everything ripening in the next two weeks. Gardening chores appear in both the Chores tab and the Garden tab |
 | **Looking For** | A collaborative wishlist for things you're researching (a new bed, a dishwasher). Track must-haves vs nice-to-haves, dated research notes attributed to whoever wrote them (you can edit your own), and links. When you decide, "Add to Shopping List" prefills a shopping item from what you've gathered |
+| **Voice entry** | Tap the mic on Chores or Shopping and say what you need — *"add task due tomorrow to clean the bathroom"*. Speech is transcribed on-device, parsed for the date, time, and assignee, then prefills the normal form for you to confirm |
 | **Local notifications** | Due-date reminders for chores and need-by reminders for shopping items at 9 am — or at the item's own time when one is set (day-of and/or day-before), filterable to my/shared/all in Settings |
 | **Auto-cleanup** | Completed chores, purchased items, past meals, ended trips, and harvested plants are deleted automatically after 1 week |
 | **Easy UI** | Swipe to complete or delete; tap to edit; colour-coded urgency sections; VoiceOver labels and 44 pt tap targets throughout |
@@ -66,6 +67,8 @@ HouseholdApp/
     │   └── MemberAssignment.swift      ← Everyone / member-index assignment helper + colours
     │
     ├── Utilities/
+    │   ├── SpeechCapture.swift         ← On-device speech-to-text (SFSpeechRecognizer)
+    │   ├── VoiceIntentParser.swift     ← Turns a transcript into a draft chore / shopping item
     │   ├── Color+Hex.swift             ← Color ↔ "#RRGGBB" hex string conversion
     │   ├── IconView.swift              ← Shared icon + label components
     │   └── NotificationManager.swift   ← Local due-date reminders (UNUserNotificationCenter)
