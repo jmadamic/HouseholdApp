@@ -60,7 +60,12 @@ HouseholdApp/
     │   ├── CategoryDoc.swift + CategoryStore.swift
     │   ├── CompletionLogDoc.swift
     │   ├── ShoppingItemDoc.swift + ShoppingStore.swift
-    │   └── MealDoc.swift + MealStore.swift
+    │   ├── MealDoc.swift + MealStore.swift
+    │   ├── SavedMealDoc.swift + SavedMealStore.swift    ← "My Meals" reusable library
+    │   ├── TripDoc.swift + TripStore.swift              ← Trips/events for packing
+    │   ├── PackingItemDoc.swift + PackingStore.swift
+    │   ├── GardenPlantDoc.swift + GardenStore.swift     ← Plants, harvests, always-ready herbs
+    │   └── WishDoc.swift + WishStore.swift              ← "Looking For" research items
     │
     ├── Models/
     │   ├── Enums.swift                 ← DueDateType, RepeatInterval, ChoreSection
@@ -81,6 +86,7 @@ HouseholdApp/
         ├── Shopping/                   ← Shopping list, rows, item/store/type forms
         ├── Garden/                     ← Growing plants with ready dates, garden chores
         ├── Wishes/                     ← "Looking For" list: criteria, dated notes, links
+        ├── Voice/                      ← Mic capture + confirm screen for spoken entry
         ├── Packing/                    ← Trip list, trip form, trip detail (sections, linked meals/chores)
         ├── Meals/                      ← Meal list, rows, add/edit sheet, My Meals library (saved meals)
         └── Settings/                   ← Members, invite code, notifications, data summary
