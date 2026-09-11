@@ -22,6 +22,7 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 | **My Meals library** | Save any meal for repeated use, then plan it again with one tap (prefills ingredients, recipe, instructions). Share a meal — full details as text — via the standard share sheet |
 | **Garden** | Track what you're growing with multiple harvests per plant, each with its own date and amount ("2 zucchinis", "some raspberries") — or mark herbs as "always ready" to pick as needed. Shopping-list items matching a crop that's ready (or close) show a "Growing" hint with the expected amount so you can hold off buying, and the add-item form has a "See what's ready soon" browser listing everything ripening in the next two weeks. Gardening chores appear in both the Chores tab and the Garden tab |
 | **Looking For** | A collaborative wishlist for things you're researching (a new bed, a dishwasher). Track must-haves vs nice-to-haves, dated research notes attributed to whoever wrote them (you can edit your own), and links. When you decide, "Add to Shopping List" prefills a shopping item from what you've gathered |
+| **Archive meals & trips** | Swipe right on a meal or trip → Archive. Archived items leave the main list and trip pickers and are **exempt from the 1-week auto-cleanup**, so a favourite meal or a trip's packing list keeps for next time. An "Archived" row at the bottom of each tab opens them; swipe to restore or delete for good |
 | **Plan from a spreadsheet** | Meals tab → table icon. Share the bundled Excel/Google Sheets template, fill in meals (plus optional Trips and Packing sheets), import the .xlsx back. Preview shows exactly what will be created; rows with problems are listed by sheet and row number and simply left out. Creates meals, shopping items for "to buy" ingredients, missing trips, and packing items. Re-importing the same file is safe — existing items are skipped |
 | **Voice entry** | Tap the mic on Chores or Shopping and say what you need — *"add task due tomorrow to clean the bathroom"*. Speech is transcribed on-device, parsed for the date, time, and assignee, then prefills the normal form for you to confirm |
 | **Local notifications** | Due-date reminders for chores and need-by reminders for shopping items at 9 am — or at the item's own time when one is set (day-of and/or day-before), filterable to my/shared/all in Settings |
@@ -61,9 +62,9 @@ HouseholdApp/
     │   ├── CategoryDoc.swift + CategoryStore.swift
     │   ├── CompletionLogDoc.swift
     │   ├── ShoppingItemDoc.swift + ShoppingStore.swift
-    │   ├── MealDoc.swift + MealStore.swift
+    │   ├── MealDoc.swift + MealStore.swift              ← activeMeals / archivedMeals
     │   ├── SavedMealDoc.swift + SavedMealStore.swift    ← "My Meals" reusable library
-    │   ├── TripDoc.swift + TripStore.swift              ← Trips/events for packing
+    │   ├── TripDoc.swift + TripStore.swift              ← Trips/events for packing; activeTrips / archivedTrips
     │   ├── PackingItemDoc.swift + PackingStore.swift
     │   ├── GardenPlantDoc.swift + GardenStore.swift     ← Plants, harvests, always-ready herbs
     │   └── WishDoc.swift + WishStore.swift              ← "Looking For" research items

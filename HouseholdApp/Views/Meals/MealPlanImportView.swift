@@ -232,8 +232,8 @@ struct MealPlanImportView: View {
                 let context = MealPlanImportContext(
                     members: appSettings.members,
                     packingSections: appSettings.packingSections,
-                    existingTrips: tripStore.trips,
-                    existingMeals: mealStore.meals,
+                    existingTrips: tripStore.activeTrips,   // archived ones don't block a fresh copy
+                    existingMeals: mealStore.activeMeals,
                     existingShopping: shoppingStore.items,
                     existingPacking: packingStore.items)
                 fileName = url.lastPathComponent
