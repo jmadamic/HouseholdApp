@@ -20,12 +20,12 @@ struct PackingListView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if tripStore.trips.isEmpty {
+                if tripStore.trips.isEmpty {   // nothing at all, archived included
                     ContentUnavailableView("No Trips", systemImage: "suitcase.rolling.fill",
                                           description: Text("Tap + to create a trip or event to pack for."))
                 } else {
                     List {
-                        ForEach(tripStore.trips) { trip in
+                        ForEach(tripStore.activeTrips) { trip in
                             NavigationLink {
                                 TripDetailView(trip: trip)
                             } label: {
@@ -41,6 +41,23 @@ struct PackingListView: View {
                                     Label("Edit", systemImage: "pencil")
                                 }
                                 .tint(.blue)
+                                Button {
+                                    tripStore.setArchived(trip, true, householdId: householdId)
+                                } label: { Label("Archive", systemImage: "archivebox") }
+                                .tint(.indigo)
+                            }
+                        }
+
+                        if !tripStore.archivedTrips.isEmpty {
+                            Section {
+                                NavigationLink {
+                                    ArchivedTripsView()
+                                } label: {
+                                    Label("Archived Trips", systemImage: "archivebox")
+                                        .badge(tripStore.archivedTrips.count)
+                                }
+                            } footer: {
+                                Text("Trips clear a week after they end. Archive one to keep its packing list for next time.")
                             }
                         }
                     }

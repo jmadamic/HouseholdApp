@@ -11,7 +11,11 @@ struct TripDoc: Codable, Identifiable {
     var endDate: Date
     var notes: String?
     var createdAt: Date
+    /// Archived trips keep their packing list but leave the main list, the
+    /// trip pickers, and auto-cleanup. Optional + defaulted for backward compat.
+    var isArchived: Bool? = nil
 
+    var archived: Bool { isArchived == true }
     var nameSafe: String { name }
 
     /// "Jul 10–14" / "Jul 30 – Aug 2" / single day "Jul 10".

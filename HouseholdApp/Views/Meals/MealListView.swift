@@ -19,8 +19,8 @@ struct MealListView: View {
     private var householdId: String { householdCtrl.household?.id ?? "" }
 
     private var filteredMeals: [MealDoc] {
-        guard filterIndex >= 0 else { return mealStore.meals }
-        return mealStore.meals.filter {
+        guard filterIndex >= 0 else { return mealStore.activeMeals }
+        return mealStore.activeMeals.filter {
             $0.assignedToMembers.isEmpty || $0.assignedToMembers.contains(filterIndex)
         }
     }
@@ -59,8 +59,8 @@ struct MealListView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 filterBar
-                if filteredMeals.isEmpty {
-                    if mealStore.meals.isEmpty {
+                if filteredMeals.isEmpty && mealStore.archivedMeals.isEmpty {
+                    if mealStore.activeMeals.isEmpty {
                         ContentUnavailableView("No Meals Planned", systemImage: "fork.knife",
                                               description: Text("Tap + to plan your first meal."))
                     } else {
@@ -80,6 +80,7 @@ struct MealListView: View {
                                                 mealToDelete = meal; showDeleteAlert = true
                                             } label: { Label("Delete", systemImage: "trash") }
                                         }
+                                        .swipeActions(edge: .leading) { archiveAction(meal) }
                                 }
                             } header: {
                                 HStack {
@@ -103,12 +104,26 @@ struct MealListView: View {
                                                 mealToDelete = meal; showDeleteAlert = true
                                             } label: { Label("Delete", systemImage: "trash") }
                                         }
+                                        .swipeActions(edge: .leading) { archiveAction(meal) }
                                 }
                             } header: {
                                 HStack {
                                     Text("Completed").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                                     Spacer()
                                     Text("\(pastMeals.count)").font(.caption).foregroundStyle(.secondary)
+                                }
+                            } footer: {
+                                Text("Completed meals clear after a week. Swipe right to archive one you want to keep.")
+                            }
+                        }
+
+                        if !mealStore.archivedMeals.isEmpty {
+                            Section {
+                                NavigationLink {
+                                    ArchivedMealsView()
+                                } label: {
+                                    Label("Archived Meals", systemImage: "archivebox")
+                                        .badge(mealStore.archivedMeals.count)
                                 }
                             }
                         }
@@ -152,6 +167,13 @@ struct MealListView: View {
             .onChange(of: router.mealToOpen) { _, _ in handleDeepLink() }
             .onChange(of: mealStore.meals.count) { _, _ in handleDeepLink() }
         }
+    }
+
+    private func archiveAction(_ meal: MealDoc) -> some View {
+        Button {
+            mealStore.setArchived(meal, true, householdId: householdId)
+        } label: { Label("Archive", systemImage: "archivebox") }
+        .tint(.indigo)
     }
 
     /// Opens a meal requested from another tab (grocery item badge).

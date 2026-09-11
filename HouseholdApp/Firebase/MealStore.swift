@@ -10,8 +10,13 @@ import FirebaseFirestore
 
 @MainActor
 final class MealStore: ObservableObject {
+    /// Every meal, archived included — Settings counts and delete-all use this.
     @Published private(set) var meals: [MealDoc] = []
     @Published var errorMessage: String?
+
+    /// What the Meals tab shows.
+    var activeMeals:   [MealDoc] { meals.filter { !$0.archived } }
+    var archivedMeals: [MealDoc] { meals.filter { $0.archived } }
 
     private var listener: ListenerRegistration?
     private var hasCleanedUp = false
@@ -55,14 +60,20 @@ final class MealStore: ObservableObject {
             .collection("meals").document(meal.id).delete()
     }
 
+    func setArchived(_ meal: MealDoc, _ archived: Bool, householdId: String) {
+        var updated = meal
+        updated.isArchived = archived ? true : nil
+        save(updated, householdId: householdId)
+    }
+
     // MARK: - Auto-cleanup
 
     /// Deletes meals whose planned day is more than 1 week in the past.
-    /// Called once per session on the first Firestore snapshot,
-    /// matching the chore/shopping cleanup behavior.
+    /// Archived meals are kept indefinitely. Called once per session on the
+    /// first Firestore snapshot, matching the chore/shopping cleanup behavior.
     private func cleanupOldMeals(householdId: String) {
         guard let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) else { return }
-        let stale = meals.filter { $0.day < cutoff }
+        let stale = meals.filter { $0.day < cutoff && !$0.archived }
         for meal in stale {
             delete(meal, householdId: householdId)
         }

@@ -73,6 +73,11 @@ struct MealDoc: Codable, Identifiable {
     var recipeURL: String? = nil
     /// Free-form cooking instructions typed directly into the meal.
     var instructions: String? = nil
+    /// Archived meals are hidden from the plan and exempt from auto-cleanup.
+    /// Optional + defaulted for backward compat.
+    var isArchived: Bool? = nil
+
+    var archived: Bool { isArchived == true }
 
     var mealTypeEnum: MealType {
         get { MealType(rawValue: mealType) ?? .dinner }

@@ -140,11 +140,11 @@ struct ChoreFormView: View {
                     }
                 }
 
-                if !tripStore.trips.isEmpty {
+                if !tripStore.activeTrips.isEmpty {
                     Section {
                         Picker("Trip / event", selection: $tripId) {
                             Text("None").tag(nil as String?)
-                            ForEach(tripStore.trips) { trip in
+                            ForEach(tripStore.activeTrips) { trip in
                                 Text("\(trip.nameSafe) (\(trip.dateRangeLabel))").tag(trip.id as String?)
                             }
                         }
