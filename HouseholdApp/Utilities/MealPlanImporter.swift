@@ -202,7 +202,7 @@ struct MealPlanImporter {
 
     private struct MealRow {
         let row: Int; let day: Date; let type: MealType; let name: String?
-        let cooks: [Int]; let have: [String]; let buy: [String]
+        let cooks: [Int]; var have: [String]; var buy: [String]
         let trip: String?; let recipe: String?; let instructions: String?; let notes: String?
     }
     private struct TripRow { let row: Int; let name: String; let start: Date; let end: Date; let notes: String? }
@@ -213,8 +213,12 @@ struct MealPlanImporter {
         "type":  ["meal", "mealtype", "type"],
         "name":  ["mealname", "name", "dish", "title"],
         "cook":  ["cook", "cooks", "who", "assignedto", "member", "madeby"],
+        // Current template: one ingredient per row + a Yes/No "Need to buy?".
+        "ingredient": ["ingredient", "item"],
+        "needbuy":    ["needtobuy", "buy", "purchase", "tobuy", "needed", "shop"],
+        // Older template: comma-separated lists in two columns. Still accepted.
         "have":  ["ingredientshave", "ingredients", "have", "onhand"],
-        "buy":   ["ingredientstobuy", "tobuy", "buy", "needtobuy", "shopping", "missing", "need"],
+        "buy":   ["ingredientstobuy", "shopping", "missing", "need"],
         "trip":  ["tripname", "trip", "event"],
         "recipe":["recipelink", "recipe", "link", "url"],
         "instructions": ["instructions", "steps", "directions", "method"],
@@ -239,11 +243,41 @@ struct MealPlanImporter {
             return []
         }
         var out: [MealRow] = []
+        var skippingExample = false
+        var exampleRowsSkipped = 0
         for r in (headerRow + 1)..<max(headerRow + 1, sheet.rows.count) {
             guard !isBlankRow(sheet, r) else { continue }
             let rowNo = r + 1
             let dateCell = cols["date"].flatMap { sheet.cell(r, $0) }
             let typeText = text(sheet, r, cols["type"])
+            let ingredientText = text(sheet, r, cols["ingredient"])
+
+            // Continuation row: no date and no meal type, but an ingredient —
+            // it belongs to the meal above (the template's one-per-row layout).
+            let dateBlank = dateCell == nil || dateCell!.isBlank
+            if dateBlank && typeText.isEmpty && !ingredientText.isEmpty {
+                if skippingExample { exampleRowsSkipped += 1; continue }
+                guard !out.isEmpty else {
+                    plan.issues.append(ImportIssue(level: .error, sheet: "Meals", row: rowNo,
+                        message: "Ingredient \"\(ingredientText)\" has no meal above it — add a Date and Meal on the row it belongs to."))
+                    continue
+                }
+                let wantsBuy = parseYes(text(sheet, r, cols["needbuy"]))
+                for name in splitList(ingredientText) {
+                    if wantsBuy { out[out.count - 1].buy.append(name) } else { out[out.count - 1].have.append(name) }
+                }
+                continue
+            }
+
+            // Grey sample rows shipped in the template: skip them and any
+            // ingredient rows hanging off them.
+            let nameText = text(sheet, r, cols["name"])
+            if key(nameText).hasPrefix("example") {
+                skippingExample = true
+                exampleRowsSkipped += 1
+                continue
+            }
+            skippingExample = false
 
             guard let day = parseDate(dateCell) else {
                 plan.issues.append(ImportIssue(level: .error, sheet: "Meals", row: rowNo,
@@ -268,16 +302,29 @@ struct MealPlanImporter {
                     message: "Recipe link \"\(recipe)\" doesn't look like a web address; kept as typed."))
             }
 
+            // Ingredients: this row's single ingredient (new layout) plus any
+            // comma-separated list columns (old layout) — both are fine.
+            var have = splitList(text(sheet, r, cols["have"]))
+            var buy  = splitList(text(sheet, r, cols["buy"]))
+            if !ingredientText.isEmpty {
+                let names = splitList(ingredientText)
+                if parseYes(text(sheet, r, cols["needbuy"])) { buy += names } else { have += names }
+            }
+
             out.append(MealRow(
                 row: rowNo, day: day, type: type,
-                name: optional(text(sheet, r, cols["name"])),
+                name: optional(nameText),
                 cooks: cooks,
-                have: splitList(text(sheet, r, cols["have"])),
-                buy: splitList(text(sheet, r, cols["buy"])),
+                have: have,
+                buy: buy,
                 trip: optional(text(sheet, r, cols["trip"])),
                 recipe: recipe,
                 instructions: optional(text(sheet, r, cols["instructions"])),
                 notes: optional(text(sheet, r, cols["notes"]))))
+        }
+        if exampleRowsSkipped > 0 {
+            plan.issues.append(ImportIssue(level: .warning, sheet: "Meals", row: nil,
+                message: "Skipped \(exampleRowsSkipped) example row\(exampleRowsSkipped == 1 ? "" : "s") left in the template."))
         }
         return out
     }
@@ -292,6 +339,7 @@ struct MealPlanImporter {
             guard !isBlankRow(sheet, r) else { continue }
             let rowNo = r + 1
             let name = text(sheet, r, cols["name"])
+            if key(name).hasPrefix("example") { continue }   // template sample row
             guard !name.isEmpty else {
                 plan.issues.append(ImportIssue(level: .error, sheet: "Trips", row: rowNo, message: "Trip Name is required."))
                 continue
@@ -330,6 +378,7 @@ struct MealPlanImporter {
             let rowNo = r + 1
             let trip = text(sheet, r, cols["trip"])
             let item = text(sheet, r, cols["item"])
+            if key(item).hasPrefix("example") { continue }   // template sample row
             guard !trip.isEmpty, !item.isEmpty else {
                 plan.issues.append(ImportIssue(level: .error, sheet: "Packing", row: rowNo,
                     message: trip.isEmpty ? "Trip Name is required." : "Item is required."))
@@ -405,6 +454,14 @@ struct MealPlanImporter {
     }
 
     // ── Value parsing ──────────────────────────────────────────────────────────
+
+    /// "Need to buy?" accepts the dropdown's Yes plus anything checkbox-like:
+    /// TRUE, Y, X, ✓, ✔, 1, "buy". Everything else (blank, No) means on hand.
+    private func parseYes(_ s: String) -> Bool {
+        let k = key(s)
+        if ["yes", "y", "true", "x", "1", "buy", "need", "needed", "tobuy"].contains(k) { return true }
+        return s.contains("✓") || s.contains("✔") || s.contains("☑")
+    }
 
     private func parseMealType(_ s: String) -> MealType? {
         let k = key(s)
