@@ -41,17 +41,30 @@ BORDER    = Border(bottom=THIN)
 
 # (header, required, width, comment)
 MEAL_COLS = [
-    ("Date",               True,  14, "REQUIRED. The day the meal is planned for.\nType a date (e.g. 2026-09-14 or Sep 14). Excel/Sheets date cells work too."),
-    ("Meal",               True,  12, "REQUIRED. Pick from the dropdown: Breakfast, Brunch, Lunch, Dinner, Snack, Dessert."),
-    ("Meal Name",          False, 26, "Optional dish name, e.g. \"Spaghetti Bolognese\". Leave blank to just show the meal type."),
-    ("Cook",               False, 14, "Optional. A household member's name exactly as it appears in the app. Blank = everyone."),
-    ("Ingredients (have)", False, 34, "Optional. Ingredients you already have. Separate with commas: eggs, milk, butter"),
-    ("Ingredients to Buy", False, 34, "Optional. Ingredients you need to buy — each becomes a shopping item linked to this meal. Separate with commas."),
-    ("Trip Name",          False, 20, "Optional. Ties this meal to a trip. If the trip doesn't exist yet it's created for you (add dates on the Trips sheet, or it spans the meals' dates). All ingredients go on the trip's packing list under Food."),
-    ("Recipe Link",        False, 30, "Optional. A web link to the recipe (https://…)."),
-    ("Instructions",       False, 40, "Optional. Cooking steps. Line breaks are fine (Alt+Enter in Excel, Ctrl+Enter in Sheets)."),
-    ("Notes",              False, 30, "Optional. Anything else."),
+    ("Date",         True,  13, "REQUIRED on the first row of each meal. Type a date (2026-09-14, Sep 14, 9/14/2026) or use a date cell.\nLeave BLANK on extra ingredient rows for the same meal."),
+    ("Meal",         True,  12, "REQUIRED on the first row of each meal. Pick from the dropdown.\nLeave BLANK on extra ingredient rows."),
+    ("Meal Name",    False, 24, "Optional dish name, e.g. \"Spaghetti Bolognese\". Blank = just the meal type."),
+    ("Cook",         False, 13, "Optional. A household member's name as it appears in the app. Blank = everyone."),
+    ("Ingredient",   False, 24, "Optional. ONE ingredient per row. Need more? Use the rows below and leave Date/Meal blank — they belong to the meal above."),
+    ("Need to buy?", False, 13, "Pick Yes if this ingredient has to be bought. Yes = a shopping item is created and linked to the meal. Blank or No = you already have it."),
+    ("Trip Name",    False, 18, "Optional. Ties the meal to a trip; created for you if it doesn't exist (add dates on the Trips sheet, or it spans the meals' dates). All ingredients go on the trip's packing list under Food."),
+    ("Recipe Link",  False, 28, "Optional. Web link to the recipe (https://…)."),
+    ("Instructions", False, 36, "Optional. Cooking steps. Line breaks are fine (Alt+Enter in Excel, Ctrl+Enter in Sheets)."),
+    ("Notes",        False, 26, "Optional."),
 ]
+
+# Grey example rows shown at the top of the Meals sheet. The importer skips
+# any meal whose name starts with "Example" (and its ingredient rows), so
+# leaving them in place is harmless — but the sheet tells people to overwrite.
+MEAL_EXAMPLES = [
+    ("2026-09-14", "Dinner",    "Example: Spaghetti Bolognese", "Jordan", "ground beef", "Yes", "",                "https://example.com/bolognese", "Brown the beef, add sauce, simmer 20 min.", ""),
+    ("",           "",          "",                             "",       "pasta",       "No",  "",                "",                              "",                                         ""),
+    ("",           "",          "",                             "",       "garlic",      "",    "",                "",                              "",                                         ""),
+    ("2026-09-20", "Breakfast", "Example: Pancakes",            "",       "maple syrup", "Yes", "Cottage weekend", "",                              "",                                         "Bring the good syrup"),
+    ("",           "",          "",                             "",       "flour",       "",    "",                "",                              "",                                         ""),
+]
+PACK_EXAMPLES = [("Cottage weekend", "Example: Rain jacket", "Clothing"), ("Cottage weekend", "Example: Sunscreen", "Toiletries")]
+TRIP_EXAMPLES = [("Example: Cottage weekend", "2026-09-19", "2026-09-21", "")]
 
 TRIP_COLS = [
     ("Trip Name",  True,  24, "REQUIRED. Must match the Trip Name used on the Meals and Packing sheets (not case-sensitive)."),
@@ -98,6 +111,31 @@ def write_sheet(ws, cols, freeze="A2"):
         ws.protection.password = PROTECT_PASSWORD
 
 
+EXAMPLE_FONT = Font(italic=True, color="9A9A9A")
+
+
+def write_examples(ws, rows):
+    """Grey, italic sample rows right under the header. Cells stay editable."""
+    for r, values in enumerate(rows, start=2):
+        for c, v in enumerate(values, start=1):
+            if v == "":
+                continue
+            cell = ws.cell(row=r, column=c, value=v)
+            cell.font = EXAMPLE_FONT
+
+
+def add_yes_no(ws, col_letter, title="Need to buy?"):
+    """Yes/No dropdown that highlights Yes — the portable stand-in for a
+    checkbox (real Excel checkboxes don't survive Google Sheets or Numbers)."""
+    from openpyxl.formatting.rule import CellIsRule
+    add_list_validation(ws, col_letter, ["Yes", "No"], title)
+    rng = f"{col_letter}2:{col_letter}{DATA_ROWS + 1}"
+    ws.conditional_formatting.add(rng, CellIsRule(operator="equal", formula=['"Yes"'],
+        fill=PatternFill("solid", fgColor="FFD9A8"), font=Font(bold=True, color="8A4B00")))
+    for r in range(2, DATA_ROWS + 2):
+        ws[f"{col_letter}{r}"].alignment = Alignment(horizontal="center", vertical="top")
+
+
 def add_list_validation(ws, col_letter, options, title):
     dv = DataValidation(type="list", formula1='"' + ",".join(options) + '"', allow_blank=True)
     dv.error = f"Pick a {title} from the dropdown."
@@ -124,22 +162,29 @@ def instructions_sheet(ws):
     rows = [
         ("HouseholdApp — Meal Plan Template", None),
         ("", None),
-        ("How to use", "1. Fill in the Meals sheet (one row per meal). Trips and Packing are optional.\n"
+        ("How to use", "1. Fill in the Meals sheet. Grey rows are examples — type over them or delete them.\n"
+                       "   One ingredient per row: put the Date and Meal on the first row, then list more ingredients on the rows below with Date/Meal left blank.\n"
+                       "   Set \"Need to buy?\" to Yes on anything you have to shop for — it becomes a shopping item linked to the meal.\n"
+                       "   Trips and Packing sheets are optional.\n"
                        "2. Save the file as .xlsx (Google Sheets: File → Download → Microsoft Excel).\n"
                        "3. In the app: Meals tab → spreadsheet button → Import. You'll see a preview and can fix anything before it's added."),
         ("", None),
         ("Colour key", "Orange header = required.  Blue header = optional.  Hover a header for details."),
         ("Dates", "Type them any common way: 2026-09-14, Sep 14, 9/14/2026, or use the cell as a real date. Past dates are allowed but not recommended."),
-        ("Lists in one cell", "Ingredients are comma-separated:  eggs, milk, butter"),
+        ("Ingredients", "One per row. Rows with a blank Date and Meal belong to the meal above. (Comma-separated lists in one cell still work if you prefer.)"),
+        ("Need to buy?", "Yes = create a shopping item. Anything else = you already have it."),
         ("Names", "Cook must match a household member's name in the app (not case-sensitive). Blank = everyone."),
         ("Trips", "Naming a trip on a meal links it. If the trip isn't in the app or on the Trips sheet, it's created spanning the dates of its meals."),
         ("Duplicates", "Meals that already exist (same day, type and name) and shopping/packing items already on a list are skipped, so re-importing the same file is safe."),
         ("Protection", "Headers and sheet names are locked so the import always works. Only the white cells are editable. Don't unprotect unless you know what you're changing."),
         ("", None),
         ("EXAMPLE — Meals", None),
-        ("Date | Meal | Meal Name | Cook | Ingredients (have) | Ingredients to Buy | Trip Name",
-         "2026-09-14 | Dinner | Spaghetti Bolognese | Jordan | pasta, garlic | ground beef, tomatoes | \n"
-         "2026-09-20 | Breakfast | Pancakes | | flour, eggs | maple syrup | Cottage weekend"),
+        ("Date | Meal | Meal Name | Cook | Ingredient | Need to buy? | Trip Name",
+         "2026-09-14 | Dinner | Spaghetti Bolognese | Jordan | ground beef | Yes |\n"
+         "           |        |                     |        | pasta       | No  |\n"
+         "           |        |                     |        | garlic      |     |\n"
+         "2026-09-20 | Breakfast | Pancakes |  | maple syrup | Yes | Cottage weekend\n"
+         "           |           |          |  | flour       |     |"),
         ("", None),
         ("EXAMPLE — Trips", None),
         ("Trip Name | Start Date | End Date", "Cottage weekend | 2026-09-19 | 2026-09-21"),
@@ -170,16 +215,20 @@ def main():
 
     ws_m = wb.create_sheet("Meals")
     write_sheet(ws_m, MEAL_COLS)
+    write_examples(ws_m, MEAL_EXAMPLES)
     add_date_validation(ws_m, "A")
     add_list_validation(ws_m, "B", MEAL_TYPES, "Meal")
+    add_yes_no(ws_m, "F")
 
     ws_t = wb.create_sheet("Trips")
     write_sheet(ws_t, TRIP_COLS)
+    write_examples(ws_t, TRIP_EXAMPLES)
     add_date_validation(ws_t, "B")
     add_date_validation(ws_t, "C")
 
     ws_p = wb.create_sheet("Packing")
     write_sheet(ws_p, PACK_COLS)
+    write_examples(ws_p, PACK_EXAMPLES)
     add_list_validation(ws_p, "C", SECTIONS, "Section")
 
     # Open on Meals; lock sheet structure (no rename/delete/add).

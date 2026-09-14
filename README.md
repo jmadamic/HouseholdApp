@@ -288,12 +288,14 @@ Some people would rather plan a week (or a trip) in a spreadsheet than tap throu
 
 | Sheet | Required | Optional |
 |---|---|---|
-| Meals | Date, Meal (dropdown) | Meal Name, Cook, Ingredients (have), Ingredients to Buy, Trip Name, Recipe Link, Instructions, Notes |
+| Meals | Date, Meal (dropdown) — on the first row of each meal | Meal Name, Cook, Ingredient (one per row), Need to buy? (Yes/No dropdown), Trip Name, Recipe Link, Instructions, Notes |
 | Trips | Trip Name, Start Date, End Date | Notes |
 | Packing | Trip Name, Item | Section (dropdown) |
 
+**Layout:** one ingredient per row. Put the Date and Meal on a meal's first row; list more ingredients on the rows underneath with Date/Meal left blank — they belong to the meal above. "Need to buy?" is a Yes/No dropdown that highlights orange on Yes (the portable stand-in for a checkbox — real Excel checkboxes don't survive Google Sheets or Numbers). Grey example rows ship in every sheet; type over them or leave them, the importer skips anything named "Example…".
+
 **What gets created:** each row → a meal; each "Ingredients to Buy" entry → a shopping item linked to the meal; a Trip Name that doesn't exist → a new trip (dated from the Trips sheet, or spanning its meals' dates); meals on a trip put all their ingredients on the packing list under Food; Packing rows → packing items.
 
-**Error-proofing:** headers, sheet names, and the Instructions sheet are locked in the template; dropdowns and date validation guard the cells. On import, headers are matched case-insensitively with aliases, dates are accepted in most typed forms, blank rows are ignored, and every problem row is reported with its sheet and row number while the rest still import. Meals, items, and trips that already exist are skipped.
+**Error-proofing:** headers, sheet names, and the Instructions sheet are locked in the template; dropdowns (Meal, Need to buy?, Section) and date validation guard the cells. On import, headers are matched case-insensitively with aliases, dates are accepted in most typed forms, blank rows are ignored, and every problem row is reported with its sheet and row number while the rest still import. Meals, items, and trips that already exist are skipped.
 
 Regenerate the template after changing columns with `python3 scripts/make-meal-template.py` (needs `openpyxl`), and keep `MealPlanImporter.swift`'s aliases in sync.
