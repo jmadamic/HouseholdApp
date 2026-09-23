@@ -1,19 +1,29 @@
 #!/bin/bash
 # refresh-sideload.sh
 # Rebuilds HouseholdApp and reinstalls it on all paired iPhones.
-# Runs via launchd every 10 min on Sundays 9am-9pm; retries devices that
-# weren't unlocked/available on previous attempts.
 #
-# State tracking: stamps /tmp/householdapp-refresh.<UDID>.stamp on successful
-# install. Skips any device already stamped within the past 6 days, so the
-# weekly cycle re-installs but mid-week retries on a failed device don't
-# unnecessarily reinstall on the working one.
+# Free-team provisioning profiles last 7 days, so this runs TWICE a week
+# (Sundays and Wednesdays, every 30 min 8am-10pm) rather than weekly. The
+# longest gap between runs is 4 days, so it now takes two consecutive
+# missed days — not one — for the app to expire on a phone.
+#
+# State tracking: stamps <STAMP_DIR>/householdapp-refresh.<UDID>.stamp on a
+# successful install, and skips devices stamped within STAMP_TTL_SECS so the
+# many retry fires in a day are no-ops. That TTL MUST stay below the
+# Sunday->Wednesday gap (3 days) or the Wednesday run would always skip.
 
 set -e
 
 PROJECT_DIR="/Users/jordanadamich/Coding/HouseholdApp"
 SCHEME="HouseholdApp"
-STAMP_TTL_SECS=$((6 * 24 * 3600))  # 6 days
+# Must be < 3 days (the Sun->Wed gap) so both scheduled days actually run,
+# and > 1 day so same-day retries skip a device that already succeeded.
+STAMP_TTL_SECS=$((2 * 24 * 3600))  # 2 days
+
+# Stamps live alongside Xcode's data, not /tmp — macOS purges /tmp files
+# after a few days, which silently erased the stamps this relies on.
+STAMP_DIR="$HOME/Library/Application Support/HouseholdApp"
+mkdir -p "$STAMP_DIR"
 
 # ── Devices ───────────────────────────────────────────────────────────────────
 # Format: "<friendly name>:<ECID (for xcodebuild)>:<devicectl UDID>"
@@ -22,7 +32,12 @@ DEVICES=(
   "Wife iPhone:00008140-001A74A92678801C:8F9616CB-0E07-5556-B119-18859D9433F2"
 )
 
-DERIVED_DATA_APP="$HOME/Library/Developer/Xcode/DerivedData/HouseholdApp-btmbjbnnmvrsgodipeaswnzziody/Build/Products/Debug-iphoneos/HouseholdApp.app"
+# Located by glob: the DerivedData hash changes if the project is moved or
+# DerivedData is cleared, and a hardcoded path would silently install nothing.
+find_built_app() {
+  find "$HOME/Library/Developer/Xcode/DerivedData" \
+       -maxdepth 5 -name "HouseholdApp.app" -path "*Debug-iphoneos*" 2>/dev/null | head -1
+}
 
 cd "$PROJECT_DIR"
 
@@ -59,7 +74,7 @@ ANY_PENDING=0
 
 for entry in "${DEVICES[@]}"; do
   IFS=":" read -r NAME ECID UDID <<< "$entry"
-  STAMP="/tmp/householdapp-refresh.$UDID.stamp"
+  STAMP="$STAMP_DIR/householdapp-refresh.$UDID.stamp"
 
   # Skip if recently stamped successful
   if [ -f "$STAMP" ]; then
@@ -73,9 +88,19 @@ for entry in "${DEVICES[@]}"; do
   echo ""
   echo "[$(ts)] ═══ $NAME (ECID=$ECID) ═══"
 
-  STATUS=$(xcrun devicectl list devices 2>&1 | grep "$UDID" | grep -oE "available|unavailable|connected" | head -1)
+  # Match on EITHER identifier. `devicectl list devices` prints the ECID in
+  # its Identifier column on current macOS, but printed the CoreDevice UDID
+  # on older versions — matching only one silently reported every device as
+  # unreachable and made every scheduled run a no-op.
+  DEVICE_LINE=$(xcrun devicectl list devices 2>&1 | grep -E "$UDID|$ECID" | head -1)
+  if [ -z "$DEVICE_LINE" ]; then
+    echo "[$(ts)] $NAME: not listed by devicectl (phone off, asleep, or off the network) — will retry next run"
+    ANY_PENDING=1
+    continue
+  fi
+  STATUS=$(echo "$DEVICE_LINE" | grep -oE "available|unavailable|connected" | head -1)
   if [ "$STATUS" != "available" ] && [ "$STATUS" != "connected" ]; then
-    echo "[$(ts)] $NAME is $STATUS — will retry next run"
+    echo "[$(ts)] $NAME: ${STATUS:-unknown state} — will retry next run"
     ANY_PENDING=1
     continue
   fi
@@ -94,8 +119,34 @@ for entry in "${DEVICES[@]}"; do
     continue
   fi
 
+  APP_PATH=$(find_built_app)
+  if [ -z "$APP_PATH" ]; then
+    echo "[$(ts)] $NAME: no built .app found in DerivedData — will retry next run"
+    ANY_PENDING=1
+    continue
+  fi
+
+  # A build can succeed without recompiling and still re-sign, so check the
+  # profile actually embedded in what we are about to install rather than
+  # trusting the build result.
+  PROFILE_END=$(security cms -D -i "$APP_PATH/embedded.mobileprovision" 2>/dev/null \
+                | plutil -extract ExpirationDate raw -o - - 2>/dev/null)
+  if [ -n "$PROFILE_END" ]; then
+    PROFILE_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$PROFILE_END" "+%s" 2>/dev/null)
+    NOW_EPOCH=$(date +%s)
+    if [ -n "$PROFILE_EPOCH" ]; then
+      PROFILE_DAYS=$(( (PROFILE_EPOCH - NOW_EPOCH) / 86400 ))
+      echo "[$(ts)] Embedded profile valid for $PROFILE_DAYS more day(s) (until $PROFILE_END)"
+      if [ "$PROFILE_EPOCH" -le "$NOW_EPOCH" ]; then
+        echo "[$(ts)] $NAME: built app carries an EXPIRED profile — refusing to install; will retry next run"
+        ANY_PENDING=1
+        continue
+      fi
+    fi
+  fi
+
   echo "[$(ts)] Installing..."
-  if xcrun devicectl device install app --device "$UDID" "$DERIVED_DATA_APP" > /tmp/householdapp-install.log 2>&1; then
+  if xcrun devicectl device install app --device "$UDID" "$APP_PATH" > /tmp/householdapp-install.log 2>&1; then
     touch "$STAMP"
     echo "[$(ts)] $NAME: ✅ installed"
   else
