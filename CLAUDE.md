@@ -33,7 +33,14 @@ xcrun devicectl device install app --device <UDID> <path-to-built-.app>
 firebase deploy --only firestore:rules
 ```
 
-`scripts/refresh-sideload.sh` runs the device rebuild/reinstall weekly via launchd (free-team apps expire every 7 days). Device IDs live in that script.
+`scripts/refresh-sideload.sh` rebuilds and reinstalls on both phones via launchd on **Sundays and Wednesdays**, every 30 min 8 AM–10 PM (free-team profiles last 7 days; a 4-day max gap means one missed day no longer expires the app). Device IDs live in that script; the schedule is version-controlled at `scripts/com.householdapp.refresh-sideload.plist` — edit there, copy to `~/Library/LaunchAgents/`, then `launchctl unload && load`.
+
+**Refresh-script gotchas** — each of these broke it silently before:
+- `devicectl list devices` prints the **ECID** in its Identifier column on current macOS, but printed the CoreDevice UDID on older versions. The availability check must match **either**, or every run reports both phones unreachable and does nothing (this went unnoticed for weeks and let the profiles expire).
+- The stamp TTL must stay **below the 3-day Sun→Wed gap**, or the Wednesday run always skips and the extra day is useless.
+- Stamps live in `~/Library/Application Support/HouseholdApp/`, not `/tmp` — macOS purges `/tmp`.
+- The built `.app` is located by glob, never a hardcoded DerivedData hash.
+- The script checks the **embedded profile's expiry before installing**. A build can succeed by reusing a cached binary without re-signing, so "BUILD SUCCEEDED" is not evidence the signature was refreshed.
 
 ## Key Conventions
 
