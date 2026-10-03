@@ -23,6 +23,9 @@ STAMP_TTL_SECS=$((2 * 24 * 3600))  # 2 days
 # Stamps live alongside Xcode's data, not /tmp — macOS purges /tmp files
 # after a few days, which silently erased the stamps this relies on.
 STAMP_DIR="$HOME/Library/Application Support/HouseholdApp"
+# Logs too: /tmp is purged, which erased the evidence of why runs were missed.
+LOG_DIR="$HOME/Library/Logs/HouseholdApp"
+mkdir -p "$LOG_DIR"
 mkdir -p "$STAMP_DIR"
 
 # ── Devices ───────────────────────────────────────────────────────────────────
@@ -113,8 +116,8 @@ for entry in "${DEVICES[@]}"; do
       -configuration Debug \
       -allowProvisioningUpdates \
       -allowProvisioningDeviceRegistration \
-      build > /tmp/householdapp-build.log 2>&1; then
-    echo "[$(ts)] $NAME: BUILD FAILED — see /tmp/householdapp-build.log"
+      build > "$LOG_DIR/build.log" 2>&1; then
+    echo "[$(ts)] $NAME: BUILD FAILED — see "$LOG_DIR/build.log""
     ANY_PENDING=1
     continue
   fi
@@ -146,11 +149,11 @@ for entry in "${DEVICES[@]}"; do
   fi
 
   echo "[$(ts)] Installing..."
-  if xcrun devicectl device install app --device "$UDID" "$APP_PATH" > /tmp/householdapp-install.log 2>&1; then
+  if xcrun devicectl device install app --device "$UDID" "$APP_PATH" > "$LOG_DIR/install.log" 2>&1; then
     touch "$STAMP"
     echo "[$(ts)] $NAME: ✅ installed"
   else
-    echo "[$(ts)] $NAME: install failed — see /tmp/householdapp-install.log"
+    echo "[$(ts)] $NAME: install failed — see "$LOG_DIR/install.log""
     ANY_PENDING=1
   fi
 done
