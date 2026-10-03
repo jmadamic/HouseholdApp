@@ -33,12 +33,12 @@ xcrun devicectl device install app --device <UDID> <path-to-built-.app>
 firebase deploy --only firestore:rules
 ```
 
-`scripts/refresh-sideload.sh` rebuilds and reinstalls on both phones via launchd on **Sundays and Wednesdays**, every 30 min 8 AM–10 PM (free-team profiles last 7 days; a 4-day max gap means one missed day no longer expires the app). Device IDs live in that script; the schedule is version-controlled at `scripts/com.householdapp.refresh-sideload.plist` — edit there, then run `scripts/install-refresh-agent.sh`. Logs: `~/Library/Logs/HouseholdApp/`.
+`scripts/refresh-sideload.sh` is fired by launchd **every 30 min, every day, 7 AM–11 PM** and refreshes only phones whose last install is **≥3 days old** (`DUE_AFTER_SECS`; free-team profiles last 7 days, so 4+ days without a chance are needed to expire). When nothing is due it logs one line and exits before clearing profiles. Fixed weekdays (Sun/Wed) were tried and dropped: a day with the lid closed was simply lost. Device IDs live in that script; the schedule is version-controlled at `scripts/com.householdapp.refresh-sideload.plist` — edit there, then run `scripts/install-refresh-agent.sh`. Logs: `~/Library/Logs/HouseholdApp/`.
 
 **Refresh-script gotchas** — each of these broke it silently before:
 - **Never `launchctl load`/`unload` the agent — use `scripts/install-refresh-agent.sh`** (`bootout` + `bootstrap`). A job registered with legacy `load` can sit in **"needs LWCR update"**: `launchctl print` lists all its calendar triggers, but none ever spawn it (`runs = 0`). That skipped every scheduled refresh Sep 23–Oct 2, 2026, while the Mac was awake. The install script fails loudly if it sees that state; `launchctl kickstart` clears it.
 - `devicectl list devices` prints the **ECID** in its Identifier column on current macOS, but printed the CoreDevice UDID on older versions. The availability check must match **either**, or every run reports both phones unreachable and does nothing (this went unnoticed for weeks and let the profiles expire).
-- The stamp TTL must stay **below the 3-day Sun→Wed gap**, or the Wednesday run always skips and the extra day is useless.
+- `DUE_AFTER_SECS` must stay well under 7 days; 3 leaves a 4-day buffer for a closed Mac or a phone that's away.
 - Stamps live in `~/Library/Application Support/HouseholdApp/` and logs in `~/Library/Logs/HouseholdApp/`, not `/tmp` — macOS purges `/tmp`, which once erased the only evidence of why runs were missed.
 - A missed scheduled day is not always a bug: check `pmset -g log` for `Wake` events (field 4 == `Wake`, not `DarkWake`). If the Mac was asleep all day, launchd had nothing to fire on.
 - The built `.app` is located by glob, never a hardcoded DerivedData hash.

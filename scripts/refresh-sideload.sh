@@ -2,23 +2,25 @@
 # refresh-sideload.sh
 # Rebuilds HouseholdApp and reinstalls it on all paired iPhones.
 #
-# Free-team provisioning profiles last 7 days, so this runs TWICE a week
-# (Sundays and Wednesdays, every 30 min 8am-10pm) rather than weekly. The
-# longest gap between runs is 4 days, so it now takes two consecutive
-# missed days — not one — for the app to expire on a phone.
+# Free-team provisioning profiles last 7 days. Rather than refreshing on
+# fixed weekdays (which fails whenever the Mac is closed that whole day),
+# launchd runs this every 30 minutes, every day, 7am-11pm, and the script
+# refreshes a phone only once its last successful install is DUE_AFTER_SECS
+# (3 days) old. A missed day is simply caught up the next time the Mac is
+# awake and the phone is reachable; it takes 4+ days without a chance for
+# the app to expire.
 #
-# State tracking: stamps <STAMP_DIR>/householdapp-refresh.<UDID>.stamp on a
-# successful install, and skips devices stamped within STAMP_TTL_SECS so the
-# many retry fires in a day are no-ops. That TTL MUST stay below the
-# Sunday->Wednesday gap (3 days) or the Wednesday run would always skip.
+# State: <STAMP_DIR>/householdapp-refresh.<UDID>.stamp is touched on each
+# successful install. When nothing is due the run exits after one log line,
+# without touching provisioning profiles or the network.
 
 set -e
 
 PROJECT_DIR="/Users/jordanadamich/Coding/HouseholdApp"
 SCHEME="HouseholdApp"
-# Must be < 3 days (the Sun->Wed gap) so both scheduled days actually run,
-# and > 1 day so same-day retries skip a device that already succeeded.
-STAMP_TTL_SECS=$((2 * 24 * 3600))  # 2 days
+# Refresh a phone once its install is this old. 3 days leaves a 4-day
+# buffer before the 7-day profile expires.
+DUE_AFTER_SECS=$((3 * 24 * 3600))
 
 # Stamps live alongside Xcode's data, not /tmp — macOS purges /tmp files
 # after a few days, which silently erased the stamps this relies on.
@@ -45,6 +47,31 @@ find_built_app() {
 cd "$PROJECT_DIR"
 
 ts() { date "+%Y-%m-%d %H:%M:%S"; }
+
+# ── Anything due? ─────────────────────────────────────────────────────────────
+# Runs 33x a day, so bail out quietly when every phone is fresh.
+stamp_age() {  # seconds since last successful install; huge if never
+  local f="$STAMP_DIR/householdapp-refresh.$1.stamp"
+  if [ -f "$f" ]; then echo $(( $(date +%s) - $(stat -f %m "$f") )); else echo 999999999; fi
+}
+DUE=()
+for entry in "${DEVICES[@]}"; do
+  IFS=":" read -r NAME ECID UDID <<< "$entry"
+  AGE=$(stamp_age "$UDID")
+  if [ "$AGE" -ge "$DUE_AFTER_SECS" ]; then
+    DUE+=("$entry")
+  fi
+done
+if [ "${#DUE[@]}" -eq 0 ]; then
+  SUMMARY=""
+  for entry in "${DEVICES[@]}"; do
+    IFS=":" read -r NAME ECID UDID <<< "$entry"
+    LEFT=$(( (DUE_AFTER_SECS - $(stamp_age "$UDID")) / 3600 ))
+    SUMMARY+="$NAME due in ${LEFT}h; "
+  done
+  echo "[$(ts)] Nothing due — ${SUMMARY%; }"
+  exit 0
+fi
 
 # ── Force fresh provisioning profile ──────────────────────────────────────────
 # Xcode caches mobileprovision files in ~/Library/Developer/Xcode/UserData/
@@ -75,18 +102,9 @@ fi
 
 ANY_PENDING=0
 
-for entry in "${DEVICES[@]}"; do
+for entry in "${DUE[@]}"; do
   IFS=":" read -r NAME ECID UDID <<< "$entry"
   STAMP="$STAMP_DIR/householdapp-refresh.$UDID.stamp"
-
-  # Skip if recently stamped successful
-  if [ -f "$STAMP" ]; then
-    AGE=$(($(date +%s) - $(stat -f %m "$STAMP")))
-    if [ "$AGE" -lt "$STAMP_TTL_SECS" ]; then
-      echo "[$(ts)] $NAME: already refreshed $((AGE/3600))h ago, skipping"
-      continue
-    fi
-  fi
 
   echo ""
   echo "[$(ts)] ═══ $NAME (ECID=$ECID) ═══"
