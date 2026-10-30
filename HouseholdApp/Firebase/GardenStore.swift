@@ -1,9 +1,9 @@
 // GardenStore.swift
 // Real-time Firestore store for /households/{id}/gardenPlants.
 //
-// Plants sort by their NEXT pending harvest (soonest first). Fully
-// harvested plants whose last harvest is older than 1 week are deleted
-// once per session on the first snapshot. Write failures surface on
+// Plants sort by their NEXT pending harvest (soonest first). Finished
+// plants (fully harvested, or marked done for the season) are deleted
+// once per session on the first snapshot, 1 week after they finished. Write failures surface on
 // `errorMessage`.
 
 import Foundation
@@ -80,6 +80,14 @@ final class GardenStore: ObservableObject {
         save(updated, householdId: householdId)
     }
 
+    /// Marks a plant done for the season (or, with `false`, puts it back
+    /// to growing). Works for any plant, including always-ready ones.
+    func setDoneForSeason(_ plant: GardenPlantDoc, _ done: Bool, householdId: String) {
+        var updated = plant
+        updated.seasonEndedAt = done ? Date() : nil
+        save(updated, householdId: householdId)
+    }
+
     /// First plant with a pending harvest ready (or within a week) whose
     /// name matches a shopping-item name — powers the "growing" hint.
     func readySoonPlant(matching itemName: String) -> GardenPlantDoc? {
@@ -103,13 +111,13 @@ final class GardenStore: ObservableObject {
 
     // MARK: - Auto-cleanup
 
-    /// Deletes plants whose every harvest was collected more than 1 week
-    /// ago, matching the app's other cleanup behavior.
+    /// Deletes plants that finished (every harvest collected, or marked
+    /// done for the season) more than 1 week ago, matching the app's other
+    /// cleanup behavior.
     private func cleanupOldHarvested(householdId: String) {
         guard let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) else { return }
         let stale = plants.filter { plant in
-            plant.isFullyHarvested &&
-            (plant.allHarvests.compactMap(\.harvestedAt).max() ?? .distantFuture) < cutoff
+            plant.isFullyHarvested && (plant.finishedAt ?? .distantFuture) < cutoff
         }
         for plant in stale {
             delete(plant, householdId: householdId)

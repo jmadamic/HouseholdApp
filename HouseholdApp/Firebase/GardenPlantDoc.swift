@@ -64,8 +64,14 @@ struct GardenPlantDoc: Codable, Identifiable {
     /// cut-and-come-again greens). No dated harvests; never auto-completes
     /// or cleans up. Optional + defaulted for backward compat.
     var isAlwaysReady: Bool? = nil
+    /// Set when the plant is marked "done for the season" — any plant,
+    /// including always-ready herbs and ones with harvests still pending.
+    /// It then counts as finished and is auto-deleted 7 days after this
+    /// date. Optional + defaulted for backward compat; nil = still growing.
+    var seasonEndedAt: Date? = nil
 
     var alwaysReady: Bool { isAlwaysReady == true }
+    var isDoneForSeason: Bool { seasonEndedAt != nil }
 
     var nameSafe: String { name }
 
@@ -89,11 +95,22 @@ struct GardenPlantDoc: Codable, Identifiable {
 
     /// True once every expected harvest has been collected. Always-ready
     /// plants never complete — they stay in the Growing section.
-    var isFullyHarvested: Bool { alwaysReady ? false : pendingHarvests.isEmpty }
+    /// Ending the season counts as finished regardless of pending harvests.
+    var isFullyHarvested: Bool {
+        if isDoneForSeason { return true }
+        return alwaysReady ? false : pendingHarvests.isEmpty
+    }
+
+    /// When this plant finished: the season end if marked, else its last
+    /// harvest. Auto-cleanup deletes 7 days after this.
+    var finishedAt: Date? {
+        seasonEndedAt ?? allHarvests.compactMap(\.harvestedAt).max()
+    }
 
     /// Sort key for the garden list: always-ready plants first (they're
     /// pickable today), then by next pending harvest.
     var nextHarvestDate: Date {
+        if isDoneForSeason { return .distantFuture }
         if alwaysReady { return .distantPast }
         return nextHarvest?.expectedDate ?? .distantFuture
     }
@@ -101,6 +118,7 @@ struct GardenPlantDoc: Codable, Identifiable {
     /// True when this plant should influence grocery decisions: something
     /// is ready now or within the next week.
     var isReadySoon: Bool {
+        if isDoneForSeason { return false }
         if alwaysReady { return true }
         guard let next = nextHarvest else { return false }
         return next.daysUntilReady <= 7
@@ -108,6 +126,7 @@ struct GardenPlantDoc: Codable, Identifiable {
 
     /// Label for the next harvest, e.g. "2 zucchinis ready in 3 days".
     var readyLabel: String {
+        if isDoneForSeason { return "Done for the season" }
         if alwaysReady { return "Ready whenever" }
         return nextHarvest?.readyLabel ?? "harvested"
     }
@@ -125,6 +144,14 @@ struct GardenPlantDoc: Codable, Identifiable {
     /// list so older builds and the store's sort stay correct. Call after
     /// any change to `harvests`.
     mutating func syncLegacyFields() {
+        if let ended = seasonEndedAt {
+            // Older builds read the legacy fields: present as harvested on
+            // the season-end date, so they show it done and clean it up on
+            // the same 7-day clock.
+            isHarvested = true
+            harvestedAt = ended
+            return
+        }
         if alwaysReady {
             // Older builds read the legacy fields: present as ready today,
             // never harvested.

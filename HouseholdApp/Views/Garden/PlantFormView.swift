@@ -77,6 +77,25 @@ struct PlantFormView: View {
                 Section("Notes (optional)") {
                     TextEditor(text: $notes).frame(minHeight: 60)
                 }
+
+                if let plant {
+                    Section {
+                        Button {
+                            gardenStore.setDoneForSeason(plant, !plant.isDoneForSeason, householdId: householdId)
+                            dismiss()
+                        } label: {
+                            if plant.isDoneForSeason {
+                                Label("Still Growing — Undo Done for Season", systemImage: "arrow.uturn.backward")
+                            } else {
+                                Label("Done for the Season", systemImage: "moon.zzz.fill")
+                            }
+                        }
+                    } footer: {
+                        Text(plant.isDoneForSeason
+                             ? "This plant is removed automatically a week after the season ended."
+                             : "Marks it done (even with harvests left) and removes it automatically after a week.")
+                    }
+                }
             }
             .navigationTitle(plant == nil ? "New Plant" : "Edit Plant")
             .navigationBarTitleDisplayMode(.inline)
