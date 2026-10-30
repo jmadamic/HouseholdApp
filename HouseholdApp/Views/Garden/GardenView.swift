@@ -26,88 +26,101 @@ struct GardenView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            // The List stays mounted even when empty, with the empty state
+            // overlaid: swapping the List out for ContentUnavailableView while
+            // a swipe-delete of the last row is animating crashes UIKit
+            // ("Invalid number of items in section").
+            List {
+                if !growing.isEmpty {
+                    Section {
+                        ForEach(growing) { plant in
+                            plantRow(plant)
+                                .contentShape(Rectangle())
+                                .onTapGesture { plantToEdit = plant }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        gardenStore.delete(plant, householdId: householdId)
+                                    } label: { Label("Delete", systemImage: "trash") }
+                                }
+                                .swipeActions(edge: .leading) {
+                                    if !plant.alwaysReady {
+                                        Button {
+                                            gardenStore.markNextHarvested(plant, householdId: householdId)
+                                        } label: { Label("Harvested", systemImage: "basket.fill") }
+                                        .tint(.green)
+                                    }
+                                    Button {
+                                        gardenStore.setDoneForSeason(plant, true, householdId: householdId)
+                                    } label: { Label("Done for Season", systemImage: "moon.zzz.fill") }
+                                    .tint(.brown)
+                                }
+                        }
+                    } header: {
+                        HStack {
+                            Label("Growing", systemImage: "leaf.fill")
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text("\(growing.count)").font(.caption).foregroundStyle(.secondary)
+                        }
+                    } footer: {
+                        Text("Items that are ready (or close) show a hint on the shopping list so you can hold off buying them. Swipe right on a plant to mark it done for the season.")
+                    }
+                }
+
+                if !gardenChores.isEmpty {
+                    Section {
+                        ForEach(gardenChores) { chore in
+                            ChoreRowView(chore: chore)
+                                .contentShape(Rectangle())
+                                .onTapGesture { choreToEdit = chore }
+                        }
+                    } header: {
+                        Label("Garden Chores", systemImage: "checkmark.circle")
+                            .font(.subheadline.weight(.semibold))
+                    } footer: {
+                        Text("These also appear in the Chores tab.")
+                    }
+                }
+
+                if !harvested.isEmpty {
+                    Section {
+                        ForEach(harvested) { plant in
+                            plantRow(plant)
+                                .contentShape(Rectangle())
+                                .onTapGesture { plantToEdit = plant }
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        gardenStore.delete(plant, householdId: householdId)
+                                    } label: { Label("Delete", systemImage: "trash") }
+                                }
+                                .swipeActions(edge: .leading) {
+                                    Button {
+                                        if plant.isDoneForSeason {
+                                            gardenStore.setDoneForSeason(plant, false, householdId: householdId)
+                                        } else {
+                                            gardenStore.unmarkLastHarvested(plant, householdId: householdId)
+                                        }
+                                    } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
+                                    .tint(.orange)
+                                }
+                        }
+                    } header: {
+                        HStack {
+                            Text("Done").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(harvested.count)").font(.caption).foregroundStyle(.secondary)
+                        }
+                    } footer: {
+                        Text("Removed automatically a week after the last harvest or the end of the season. Swipe right to undo.")
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
+            .overlay {
                 if gardenStore.plants.isEmpty && gardenChores.isEmpty {
                     ContentUnavailableView("Nothing Growing Yet", systemImage: "leaf.fill",
                                           description: Text("Tap + to add something you're growing, or mark a chore as gardening to see it here."))
-                } else {
-                    List {
-                        if !growing.isEmpty {
-                            Section {
-                                ForEach(growing) { plant in
-                                    plantRow(plant)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { plantToEdit = plant }
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            Button(role: .destructive) {
-                                                gardenStore.delete(plant, householdId: householdId)
-                                            } label: { Label("Delete", systemImage: "trash") }
-                                        }
-                                        .swipeActions(edge: .leading) {
-                                            if !plant.alwaysReady {
-                                                Button {
-                                                    gardenStore.markNextHarvested(plant, householdId: householdId)
-                                                } label: { Label("Harvested", systemImage: "basket.fill") }
-                                                .tint(.green)
-                                            }
-                                        }
-                                }
-                            } header: {
-                                HStack {
-                                    Label("Growing", systemImage: "leaf.fill")
-                                        .font(.subheadline.weight(.semibold))
-                                    Spacer()
-                                    Text("\(growing.count)").font(.caption).foregroundStyle(.secondary)
-                                }
-                            } footer: {
-                                Text("Items that are ready (or close) show a hint on the shopping list so you can hold off buying them.")
-                            }
-                        }
-
-                        if !gardenChores.isEmpty {
-                            Section {
-                                ForEach(gardenChores) { chore in
-                                    ChoreRowView(chore: chore)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { choreToEdit = chore }
-                                }
-                            } header: {
-                                Label("Garden Chores", systemImage: "checkmark.circle")
-                                    .font(.subheadline.weight(.semibold))
-                            } footer: {
-                                Text("These also appear in the Chores tab.")
-                            }
-                        }
-
-                        if !harvested.isEmpty {
-                            Section {
-                                ForEach(harvested) { plant in
-                                    plantRow(plant)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { plantToEdit = plant }
-                                        .swipeActions(edge: .trailing) {
-                                            Button(role: .destructive) {
-                                                gardenStore.delete(plant, householdId: householdId)
-                                            } label: { Label("Delete", systemImage: "trash") }
-                                        }
-                                        .swipeActions(edge: .leading) {
-                                            Button {
-                                                gardenStore.unmarkLastHarvested(plant, householdId: householdId)
-                                            } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
-                                            .tint(.orange)
-                                        }
-                                }
-                            } header: {
-                                HStack {
-                                    Text("Harvested").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text("\(harvested.count)").font(.caption).foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                    .listStyle(.insetGrouped)
-                    .listSectionSpacing(.compact)
                 }
             }
             .navigationTitle("Garden")
@@ -136,7 +149,8 @@ struct GardenView: View {
         let done = plant.isFullyHarvested
         let remaining = plant.pendingHarvests.count
         return HStack(spacing: 12) {
-            Image(systemName: done ? "basket.fill" : (plant.alwaysReady ? "scissors" : "leaf.fill"))
+            Image(systemName: plant.isDoneForSeason ? "moon.zzz.fill"
+                  : done ? "basket.fill" : (plant.alwaysReady ? "scissors" : "leaf.fill"))
                 .font(.title3)
                 .foregroundStyle(done ? .brown : .green)
                 .frame(width: 36, height: 36)
@@ -147,7 +161,7 @@ struct GardenView: View {
                     .foregroundStyle(done ? .secondary : .primary)
                 HStack(spacing: 6) {
                     readyBadge(plant)
-                    if remaining > 1 {
+                    if remaining > 1 && !done {
                         Text("+\(remaining - 1) more harvest\(remaining - 1 == 1 ? "" : "s")")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
@@ -160,7 +174,7 @@ struct GardenView: View {
         }
         .opacity(done ? 0.6 : 1.0)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(plant.nameSafe), \(plant.readyLabel)\(remaining > 1 ? ", \(remaining - 1) more harvests coming" : "")")
+        .accessibilityLabel("\(plant.nameSafe), \(plant.readyLabel)\(remaining > 1 && !done ? ", \(remaining - 1) more harvests coming" : "")")
     }
 
     private func readyBadge(_ plant: GardenPlantDoc) -> some View {
