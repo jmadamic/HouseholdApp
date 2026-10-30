@@ -1,0 +1,368 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-30T22:45:33.041414+00:00",
+  "title": "Design System: HouseholdApp",
+  "extensions": {
+    "colorMeta": {
+      "household-green": {
+        "role": "primary",
+        "displayName": "Household Green",
+        "tonalRamp": [
+          "#112A1B",
+          "#1F4C31",
+          "#2D6D47",
+          "#3B8F5D",
+          "#61B583",
+          "#8FCBA7",
+          "#BEE1CC",
+          "#E9F5ED"
+        ]
+      },
+      "member-blue": {
+        "role": "secondary",
+        "displayName": "Member Blue",
+        "tonalRamp": [
+          "#001E40",
+          "#003773",
+          "#004FA6",
+          "#0068D9",
+          "#268EFF",
+          "#66AFFF",
+          "#A6D0FF",
+          "#E0EFFF"
+        ]
+      },
+      "member-pink": {
+        "role": "secondary",
+        "displayName": "Member Pink",
+        "tonalRamp": [
+          "#400B15",
+          "#731426",
+          "#A61D37",
+          "#D92648",
+          "#FF4C6E",
+          "#FF8199",
+          "#FFB6C4",
+          "#FFE6EB"
+        ]
+      },
+      "member-green": {
+        "role": "secondary",
+        "displayName": "Member Green",
+        "tonalRamp": [
+          "#0D3216",
+          "#175A28",
+          "#22813A",
+          "#2CA94C",
+          "#52CF72",
+          "#85DD9B",
+          "#B8EBC5",
+          "#E7F8EB"
+        ]
+      },
+      "member-orange": {
+        "role": "secondary",
+        "displayName": "Member Orange",
+        "tonalRamp": [
+          "#402500",
+          "#734300",
+          "#A66100",
+          "#D97F00",
+          "#FFA526",
+          "#FFBF66",
+          "#FFDAA6",
+          "#FFF2E0"
+        ]
+      },
+      "member-teal": {
+        "role": "secondary",
+        "displayName": "Member Teal",
+        "tonalRamp": [
+          "#0C2C32",
+          "#164F5A",
+          "#1F7281",
+          "#2996A9",
+          "#4FBCCF",
+          "#83D0DD",
+          "#B7E3EB",
+          "#E6F6F8"
+        ]
+      },
+      "member-red": {
+        "role": "secondary",
+        "displayName": "Member Red",
+        "tonalRamp": [
+          "#400F0C",
+          "#731B16",
+          "#A6261F",
+          "#D93229",
+          "#FF584F",
+          "#FF8983",
+          "#FFBAB7",
+          "#FFE7E6"
+        ]
+      },
+      "member-mint": {
+        "role": "secondary",
+        "displayName": "Member Mint",
+        "tonalRamp": [
+          "#003230",
+          "#005A55",
+          "#00817C",
+          "#00A9A2",
+          "#26CFC8",
+          "#66DDD8",
+          "#A6EBE8",
+          "#E0F8F7"
+        ]
+      },
+      "member-indigo": {
+        "role": "secondary",
+        "displayName": "Member Indigo",
+        "tonalRamp": [
+          "#161636",
+          "#282760",
+          "#39388B",
+          "#4B49B6",
+          "#716FDC",
+          "#9B9AE6",
+          "#C5C4F1",
+          "#EBEBFA"
+        ]
+      },
+      "everyone-purple": {
+        "role": "secondary",
+        "displayName": "Everyone Purple",
+        "tonalRamp": [
+          "#2C1438",
+          "#4F2564",
+          "#723590",
+          "#9546BD",
+          "#BB6CE3",
+          "#CF97EB",
+          "#E3C2F3",
+          "#F5EAFB"
+        ]
+      },
+      "status-overdue": {
+        "role": "tertiary",
+        "displayName": "Overdue Red",
+        "tonalRamp": [
+          "#400F0C",
+          "#731B16",
+          "#A6261F",
+          "#D93229",
+          "#FF584F",
+          "#FF8983",
+          "#FFBAB7",
+          "#FFE7E6"
+        ]
+      },
+      "status-done": {
+        "role": "tertiary",
+        "displayName": "Done Green",
+        "tonalRamp": [
+          "#0D3216",
+          "#175A28",
+          "#22813A",
+          "#2CA94C",
+          "#52CF72",
+          "#85DD9B",
+          "#B8EBC5",
+          "#E7F8EB"
+        ]
+      },
+      "grouped-background": {
+        "role": "neutral",
+        "displayName": "Grouped Background",
+        "tonalRamp": [
+          "#3C3C3E",
+          "#6D6D6F",
+          "#9D9DA1",
+          "#CECED2",
+          "#F4F4F8",
+          "#F7F7FA",
+          "#FAFAFC",
+          "#FDFDFE"
+        ]
+      },
+      "card-background": {
+        "role": "neutral",
+        "displayName": "Card Background",
+        "tonalRamp": [
+          "#404040",
+          "#737373",
+          "#A6A6A6",
+          "#D9D9D9",
+          "#FFFFFF",
+          "#FFFFFF",
+          "#FFFFFF",
+          "#FFFFFF"
+        ]
+      },
+      "label": {
+        "role": "neutral",
+        "displayName": "Label",
+        "tonalRamp": [
+          "#000000",
+          "#000000",
+          "#000000",
+          "#000000",
+          "#262626",
+          "#666666",
+          "#A6A6A6",
+          "#E0E0E0"
+        ]
+      },
+      "secondary-label": {
+        "role": "secondary",
+        "displayName": "Secondary Label",
+        "tonalRamp": [
+          "#0F0F11",
+          "#1B1B1E",
+          "#27272C",
+          "#333339",
+          "#59595F",
+          "#8A8A8E",
+          "#BBBBBD",
+          "#E8E8E8"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "large-title": {
+        "displayName": "Large Title",
+        "purpose": "Top-level navigation titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Row titles."
+      },
+      "section-label": {
+        "displayName": "Subheadline Semibold",
+        "purpose": "List section headers."
+      },
+      "meta": {
+        "displayName": "Caption",
+        "purpose": "Metadata line under a row title."
+      },
+      "badge": {
+        "displayName": "Caption 2 Medium",
+        "purpose": "Text inside tinted capsule badges."
+      },
+      "code": {
+        "displayName": "Monospaced",
+        "purpose": "Household invite codes only."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "system",
+        "value": "SwiftUI default animations",
+        "purpose": "Push, sheet, and list insert/remove transitions are the platform's; no custom curves."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Check Button",
+      "kind": "custom",
+      "refersTo": "check-button",
+      "description": "44pt round completion target; fills green when done.",
+      "html": "<button class=\"ds-check\" aria-label=\"Mark done\"><svg viewBox=\"0 0 24 24\" width=\"26\" height=\"26\"><circle cx=\"12\" cy=\"12\" r=\"10\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/></svg></button><button class=\"ds-check ds-check-done\" aria-label=\"Done\"><svg viewBox=\"0 0 24 24\" width=\"26\" height=\"26\"><circle cx=\"12\" cy=\"12\" r=\"11\" fill=\"currentColor\"/><path d=\"M7 12.5l3.2 3.2L17 9\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></button>",
+      "css": ".ds-check{width:44px;height:44px;display:inline-grid;place-items:center;background:none;border:0;color:rgba(60,60,67,.6);cursor:pointer;transition:transform .15s}.ds-check:active{transform:scale(.9)}.ds-check:focus-visible{outline:2px solid #45A86D;outline-offset:2px;border-radius:50%}.ds-check-done{color:#34C759}"
+    },
+    {
+      "name": "Member Badge",
+      "kind": "chip",
+      "refersTo": "badge-member",
+      "description": "Assignee capsule: member color text on a 12% wash.",
+      "html": "<span class=\"ds-badge\" style=\"--c:#007AFF\">Jordan</span> <span class=\"ds-badge\" style=\"--c:#FF2D55\">Partner</span> <span class=\"ds-badge\" style=\"--c:#AF52DE\">Everyone</span>",
+      "css": ".ds-badge{font:500 11px/1.3 -apple-system, system-ui, 'SF Pro Text', sans-serif;color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);padding:2px 6px;border-radius:999px;display:inline-block}"
+    },
+    {
+      "name": "Chore Row",
+      "kind": "card",
+      "refersTo": "check-button",
+      "description": "Inset-grouped list row: check, title, caption metadata, badges.",
+      "html": "<div class=\"ds-list\"><div class=\"ds-row\"><span class=\"ds-dot\"></span><div><div class=\"ds-title\">Clean bathroom</div><div class=\"ds-meta ds-late\">Overdue · Yesterday</div></div><span class=\"ds-badge2\">Everyone</span></div><div class=\"ds-row\"><span class=\"ds-dot\"></span><div><div class=\"ds-title\">Take out recycling</div><div class=\"ds-meta\">Tomorrow</div></div><span class=\"ds-badge2\" style=\"--c:#007AFF\">Jordan</span></div></div>",
+      "css": ".ds-list{background:#F2F2F7;padding:12px 16px;font-family:-apple-system, system-ui, 'SF Pro Text', sans-serif}.ds-row{display:flex;align-items:center;gap:8px;background:#fff;padding:6px 12px 6px 4px;border-bottom:.5px solid rgba(60,60,67,.29)}.ds-row:first-child{border-radius:10px 10px 0 0}.ds-row:last-child{border-radius:0 0 10px 10px;border:0}.ds-dot{width:44px;height:44px;display:grid;place-items:center}.ds-dot::after{content:'';width:22px;height:22px;border-radius:50%;border:1.6px solid rgba(60,60,67,.6)}.ds-row>div{flex:1}.ds-title{font-size:17px;color:#000}.ds-meta{font-size:12px;color:rgba(60,60,67,.6)}.ds-late{color:#FF3B30}.ds-badge2{--c:#AF52DE;font:500 11px -apple-system, system-ui, 'SF Pro Text', sans-serif;color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);padding:2px 6px;border-radius:999px}"
+    },
+    {
+      "name": "Section Header",
+      "kind": "custom",
+      "refersTo": "section-header",
+      "description": "Sticky list section label with count.",
+      "html": "<div class=\"ds-sec\"><span class=\"ds-sec-late\">Overdue</span><span class=\"ds-count\">2</span></div><div class=\"ds-sec\"><span>This Week</span><span class=\"ds-count\">5</span></div>",
+      "css": ".ds-sec{display:flex;gap:6px;align-items:baseline;background:#F2F2F7;padding:5px 16px;font:600 15px -apple-system, system-ui, 'SF Pro Text', sans-serif;color:rgba(60,60,67,.6)}.ds-sec-late{color:#FF3B30}.ds-count{font-weight:400;font-size:12px}"
+    },
+    {
+      "name": "Filter Bar",
+      "kind": "nav",
+      "refersTo": "badge-member",
+      "description": "All + one tab per member; selected takes the member color.",
+      "html": "<div class=\"ds-filter\"><button class=\"ds-ftab\" aria-pressed=\"false\">All</button><button class=\"ds-ftab ds-fsel\" style=\"--c:#007AFF\" aria-pressed=\"true\">Jordan</button><button class=\"ds-ftab\">Partner</button></div>",
+      "css": ".ds-filter{display:flex;gap:8px;padding:8px 16px;font-family:-apple-system, system-ui, 'SF Pro Text', sans-serif}.ds-ftab{font:500 15px -apple-system, system-ui, 'SF Pro Text', sans-serif;padding:6px 14px;border-radius:999px;border:0;background:rgba(118,118,128,.12);color:#000;cursor:pointer}.ds-ftab:focus-visible{outline:2px solid #45A86D}.ds-fsel{background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}"
+    },
+    {
+      "name": "Icon Tile",
+      "kind": "button",
+      "refersTo": "icon-tile",
+      "description": "Icon picker tile; solid accent only when selected.",
+      "html": "<button class=\"ds-tile\">🛒</button><button class=\"ds-tile ds-tile-sel\">🍳</button>",
+      "css": ".ds-tile{width:40px;height:40px;border-radius:8px;border:0;font-size:20px;background:rgba(69,168,109,.12);color:#45A86D;cursor:pointer;margin-right:8px}.ds-tile:hover{background:rgba(69,168,109,.2)}.ds-tile-sel{background:#45A86D;color:#fff}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Fridge Door",
+    "overview": "HouseholdApp is the shared surface a family glances at on the way past: everyone's stuff is on it, each person's things are recognisable by color at a glance, and nothing on it is precious. Structure is stock iOS; personality lives in the green tint, per-person color, SF Symbols, and soft tinted badges.",
+    "keyCharacteristics": [
+      "Stock iOS structure; system text styles throughout, so Dynamic Type works.",
+      "Color = identity: one color per household member, purple for Everyone, a chosen color per category.",
+      "Soft tinted capsules for metadata (assignee, garden, trip, meal links).",
+      "Large circular check targets (44 pt) with a haptic on toggle.",
+      "Light, Dark, or System appearance, chosen per device in Settings."
+    ],
+    "rules": [
+      {
+        "name": "The Twelve Percent Rule",
+        "section": "colors",
+        "body": "A colored background is the color at 12% opacity (0.1–0.15 for emphasis panels), with the full-strength color on the glyph or text above it. Never a solid colored chip with white text, except a selected icon tile."
+      },
+      {
+        "name": "The Red Means Late Rule",
+        "section": "colors",
+        "body": "Red text is reserved for overdue dates and overdue section headers, and destructive actions."
+      },
+      {
+        "name": "The Semantic Color Rule",
+        "section": "colors",
+        "body": "Use SwiftUI system colors, never raw hex, for anything except user-chosen category colors."
+      },
+      {
+        "name": "The Text Style Rule",
+        "section": "typography",
+        "body": "Always system text styles, never fixed point sizes. The only fixed sizes allowed are decorative empty-state and celebration glyphs."
+      },
+      {
+        "name": "The Platform Depth Rule",
+        "section": "elevation",
+        "body": "If something needs to feel raised, present it as a sheet or put it in its own list section, never add a shadow."
+      }
+    ],
+    "dos": [
+      "**Do** use stock SwiftUI containers (`List`, `Form`, `NavigationStack`, `.sheet`, `ContentUnavailableView`) before building anything custom.",
+      "**Do** give every person-related element its member color via `appSettings.memberColor(at:)`, and Everyone purple.",
+      "**Do** tint backgrounds at 12% with the full color on the glyph (The Twelve Percent Rule).",
+      "**Do** keep tap targets at 44×44 pt, add a haptic on toggles, and give rows a VoiceOver summary with `.accessibilityLabel`.",
+      "**Do** check Light and Dark appearance; the user can force either in Settings."
+    ],
+    "donts": [
+      "**Don't** use fixed point sizes for text (`.caption2`, not `.system(size: 11)`).",
+      "**Don't** use raw hex for system roles; only user-chosen category colors are hex.",
+      "**Don't** add shadows, gradients, or custom navigation chrome.",
+      "**Don't** use red for anything except overdue and destructive states."
+    ]
+  }
+}

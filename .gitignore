@@ -26,3 +26,7 @@ Pods/
 .build/
 .swiftpm/
 Package.resolved
+
+# Impeccable: engine binary is re-downloaded by the launcher; hooks live in local settings
+.claude/skills/impeccable/scripts/bin/
+.claude/settings.local.json
