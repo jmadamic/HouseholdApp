@@ -10,6 +10,7 @@ struct GardenView: View {
     @EnvironmentObject private var gardenStore:   GardenStore
     @EnvironmentObject private var choreStore:    ChoreStore
     @EnvironmentObject private var householdCtrl: HouseholdController
+    @EnvironmentObject private var undoCenter:    UndoCenter
 
     @State private var showingAddPlant = false
     @State private var plantToEdit: GardenPlantDoc? = nil
@@ -17,6 +18,14 @@ struct GardenView: View {
     @State private var choreToEdit: ChoreDoc? = nil
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
+
+    private func delete(_ plant: GardenPlantDoc) {
+        let hid = householdId
+        gardenStore.delete(plant, householdId: hid)
+        undoCenter.show("Deleted \"\(plant.nameSafe)\"") { [gardenStore] in
+            gardenStore.save(plant, householdId: hid)
+        }
+    }
 
     private var growing:   [GardenPlantDoc] { gardenStore.plants.filter { !$0.isFullyHarvested } }
     private var harvested: [GardenPlantDoc] { gardenStore.plants.filter { $0.isFullyHarvested } }
@@ -35,11 +44,10 @@ struct GardenView: View {
                     Section {
                         ForEach(growing) { plant in
                             plantRow(plant)
-                                .contentShape(Rectangle())
-                                .onTapGesture { plantToEdit = plant }
+                                .rowTap { plantToEdit = plant }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
-                                        gardenStore.delete(plant, householdId: householdId)
+                                        delete(plant)
                                     } label: { Label("Delete", systemImage: "trash") }
                                 }
                                 .swipeActions(edge: .leading) {
@@ -71,8 +79,7 @@ struct GardenView: View {
                     Section {
                         ForEach(gardenChores) { chore in
                             ChoreRowView(chore: chore)
-                                .contentShape(Rectangle())
-                                .onTapGesture { choreToEdit = chore }
+                                .rowTap { choreToEdit = chore }
                         }
                     } header: {
                         Label("Garden Chores", systemImage: "checkmark.circle")
@@ -86,11 +93,10 @@ struct GardenView: View {
                     Section {
                         ForEach(harvested) { plant in
                             plantRow(plant)
-                                .contentShape(Rectangle())
-                                .onTapGesture { plantToEdit = plant }
+                                .rowTap { plantToEdit = plant }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
-                                        gardenStore.delete(plant, householdId: householdId)
+                                        delete(plant)
                                     } label: { Label("Delete", systemImage: "trash") }
                                 }
                                 .swipeActions(edge: .leading) {

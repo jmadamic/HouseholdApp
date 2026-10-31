@@ -24,6 +24,8 @@ struct SettingsView: View {
     @State private var copiedCode         = false
     @State private var showingJoinSheet   = false
     @State private var joinCode           = ""
+    @State private var memberToRemove: Int? = nil
+    @State private var showingRemoveMemberAlert = false
 
     var body: some View {
         NavigationStack {
@@ -52,7 +54,7 @@ struct SettingsView: View {
                                     .font(.subheadline).foregroundStyle(.secondary)
                                 Text(household.inviteCode)
                                     .font(.system(.title2, design: .monospaced).weight(.bold))
-                                    .foregroundStyle(.blue)
+                                    .foregroundStyle(Color.accentColor)
                             }
                             Spacer()
                             Button {
@@ -61,7 +63,7 @@ struct SettingsView: View {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copiedCode = false }
                             } label: {
                                 Image(systemName: copiedCode ? "checkmark" : "doc.on.doc")
-                                    .foregroundStyle(copiedCode ? .green : .blue)
+                                    .foregroundStyle(copiedCode ? Color.green : Color.accentColor)
                             }
                         }
                         .padding(.vertical, 4)
@@ -213,6 +215,16 @@ struct SettingsView: View {
             } message: {
                 Text("You'll lose access to shared chores and shopping items.")
             }
+            .alert("Remove Member?", isPresented: $showingRemoveMemberAlert, presenting: memberToRemove) { index in
+                Button("Remove", role: .destructive) { removeMember(at: index) }
+                Button("Cancel", role: .cancel) {}
+            } message: { index in
+                let count = assignedCount(to: index)
+                let name = appSettings.memberName(at: index)
+                Text(count == 0
+                     ? "\(name) has nothing assigned. Everyone else keeps their items."
+                     : "\(name) is assigned to \(count) item\(count == 1 ? "" : "s"). Items only for \(name) will be shared with Everyone. Everyone else keeps their items.")
+            }
             .alert("Add Member", isPresented: $showingAddMember) {
                 TextField("Name", text: $newMemberName)
                 Button("Add") {
@@ -250,10 +262,13 @@ struct SettingsView: View {
             }
             Spacer()
             if appSettings.members.count > 1 && index >= 2 {
-                Button(role: .destructive) { appSettings.removeMember(at: index) } label: {
+                Button(role: .destructive) { memberToRemove = index; showingRemoveMemberAlert = true } label: {
                     Image(systemName: "minus.circle.fill").foregroundStyle(.red)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Remove \(name)")
             }
         }
         .padding(.vertical, 2)
@@ -267,6 +282,62 @@ struct SettingsView: View {
     }
 
     // ── Actions ────────────────────────────────────────────────────────────────
+
+    /// Chores, shopping items, meals, and wishes assigned to the member at `index`.
+    private func assignedCount(to index: Int) -> Int {
+        choreStore.chores.filter { $0.assignedToMembers.contains(index) }.count
+            + shoppingStore.items.filter { $0.assignedToMembers.contains(index) }.count
+            + mealStore.meals.filter { $0.assignedToMembers.contains(index) }.count
+            + wishStore.wishes.filter { $0.assignedToMembers.contains(index) }.count
+    }
+
+    /// Assignments are stored as member indices, so removing a member would
+    /// silently hand everyone after them the previous person's items. Remap
+    /// every stored index first (drop the removed one, shift later ones down),
+    /// then remove the name.
+    private func removeMember(at removed: Int) {
+        guard let hid = householdCtrl.household?.id else { return }
+        func remap(_ indices: [Int]) -> [Int] {
+            indices.filter { $0 != removed }.map { $0 > removed ? $0 - 1 : $0 }
+        }
+        for var chore in choreStore.chores {
+            let assigned = remap(chore.assignedToMembers), done = remap(chore.completedByMembers)
+            guard assigned != chore.assignedToMembers || done != chore.completedByMembers else { continue }
+            chore.assignedToMembers = assigned
+            chore.completedByMembers = done
+            choreStore.save(chore, householdId: hid)
+        }
+        for var item in shoppingStore.items {
+            let assigned = remap(item.assignedToMembers)
+            guard assigned != item.assignedToMembers else { continue }
+            item.assignedToMembers = assigned
+            shoppingStore.save(item, householdId: hid)
+        }
+        for var meal in mealStore.meals {
+            let assigned = remap(meal.assignedToMembers)
+            guard assigned != meal.assignedToMembers else { continue }
+            meal.assignedToMembers = assigned
+            mealStore.save(meal, householdId: hid)
+        }
+        for var wish in wishStore.wishes {
+            let assigned = remap(wish.assignedToMembers)
+            let notes = wish.notes.map { note -> WishNote in
+                var n = note
+                if n.authorMemberIndex == removed { n.authorMemberIndex = AppSettings.formerMemberIndex }
+                else if n.authorMemberIndex > removed && n.authorMemberIndex != AppSettings.formerMemberIndex {
+                    n.authorMemberIndex -= 1
+                }
+                return n
+            }
+            guard assigned != wish.assignedToMembers || notes != wish.notes else { continue }
+            wish.assignedToMembers = assigned
+            wish.notes = notes
+            wishStore.save(wish, householdId: hid)
+        }
+        if appSettings.myMemberIndex == removed { appSettings.myMemberIndex = 0 }
+        else if appSettings.myMemberIndex > removed { appSettings.myMemberIndex -= 1 }
+        appSettings.removeMember(at: removed)
+    }
 
     private func deleteAll() {
         guard let hid = householdCtrl.household?.id else { return }

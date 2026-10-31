@@ -6,6 +6,7 @@ struct MealListView: View {
     @EnvironmentObject private var appSettings:   AppSettings
     @EnvironmentObject private var mealStore:     MealStore
     @EnvironmentObject private var householdCtrl: HouseholdController
+    @EnvironmentObject private var undoCenter:    UndoCenter
     @EnvironmentObject private var router:        TabRouter
 
     @State private var filterIndex     = -2   // -2=All, 0+=member
@@ -13,10 +14,16 @@ struct MealListView: View {
     @State private var showingSavedMeals = false
     @State private var showingImport = false
     @State private var mealToEdit: MealDoc? = nil
-    @State private var showDeleteAlert = false
-    @State private var mealToDelete: MealDoc? = nil
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
+
+    private func delete(_ meal: MealDoc) {
+        let hid = householdId
+        mealStore.delete(meal, householdId: hid)
+        undoCenter.show("Deleted \"\(meal.displayName)\"") { [mealStore] in
+            mealStore.save(meal, householdId: hid)
+        }
+    }
 
     private var filteredMeals: [MealDoc] {
         guard filterIndex >= 0 else { return mealStore.activeMeals }
@@ -65,11 +72,10 @@ struct MealListView: View {
                         Section {
                             ForEach(meals(on: day)) { meal in
                                 MealRowView(meal: meal)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture { mealToEdit = meal }
+                                    .rowTap { mealToEdit = meal }
                                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                         Button(role: .destructive) {
-                                            mealToDelete = meal; showDeleteAlert = true
+                                            delete(meal)
                                         } label: { Label("Delete", systemImage: "trash") }
                                     }
                                     .swipeActions(edge: .leading) { archiveAction(meal) }
@@ -89,11 +95,10 @@ struct MealListView: View {
                         Section {
                             ForEach(pastMeals) { meal in
                                 MealRowView(meal: meal)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture { mealToEdit = meal }
+                                    .rowTap { mealToEdit = meal }
                                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                         Button(role: .destructive) {
-                                            mealToDelete = meal; showDeleteAlert = true
+                                            delete(meal)
                                         } label: { Label("Delete", systemImage: "trash") }
                                     }
                                     .swipeActions(edge: .leading) { archiveAction(meal) }
@@ -159,12 +164,6 @@ struct MealListView: View {
             .sheet(isPresented: $showingSavedMeals) { SavedMealsView() }
             .sheet(isPresented: $showingImport)     { MealPlanImportView() }
             .sheet(item: $mealToEdit)            { MealFormView(meal: $0) }
-            .alert("Delete Meal?", isPresented: $showDeleteAlert, presenting: mealToDelete) { meal in
-                Button("Delete", role: .destructive) {
-                    mealStore.delete(meal, householdId: householdId)
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: { Text("\"\($0.displayName)\" will be permanently deleted.") }
             .onAppear(perform: handleDeepLink)
             .onChange(of: router.mealToOpen) { _, _ in handleDeepLink() }
             .onChange(of: mealStore.meals.count) { _, _ in handleDeepLink() }

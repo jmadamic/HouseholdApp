@@ -157,6 +157,11 @@ class AppSettings: ObservableObject {
 
     static let defaultMembers = ["Me", "Partner"]
 
+    /// Stored as a note's author after that member is removed. A large positive
+    /// value rather than -1 so older builds (which index the color palette by
+    /// modulo) don't crash on it.
+    static let formerMemberIndex = 999
+
     /// Convenience: first member name (backward compat).
     var myName: String {
         get { members.indices.contains(0) ? members[0] : "Me" }
@@ -206,7 +211,8 @@ class AppSettings: ObservableObject {
     // ── Member display helpers ────────────────────────────────────────────────
 
     func memberName(at index: Int) -> String {
-        members.indices.contains(index) ? members[index] : "Member \(index + 1)"
+        if index == Self.formerMemberIndex { return "Former member" }
+        return members.indices.contains(index) ? members[index] : "Member \(index + 1)"
     }
 
     func memberColor(at index: Int) -> Color {

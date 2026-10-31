@@ -11,6 +11,7 @@ struct ShoppingListView: View {
     @EnvironmentObject private var appSettings:   AppSettings
     @EnvironmentObject private var shoppingStore: ShoppingStore
     @EnvironmentObject private var householdCtrl: HouseholdController
+    @EnvironmentObject private var undoCenter:    UndoCenter
 
     @State private var groupBy     = ShoppingGroupBy.store
     @State private var filterIndex = -2
@@ -75,11 +76,10 @@ struct ShoppingListView: View {
                         Section {
                             ForEach(items(for: key)) { item in
                                 ShoppingRowView(item: item)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture { itemToEdit = item }
+                                    .rowTap { itemToEdit = item }
                                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                         Button(role: .destructive) {
-                                            shoppingStore.delete(item, householdId: householdId)
+                                            delete(item)
                                         } label: { Label("Delete", systemImage: "trash") }
                                     }
                                     .swipeActions(edge: .leading) {
@@ -103,11 +103,10 @@ struct ShoppingListView: View {
                         Section {
                             ForEach(purchased) { item in
                                 ShoppingRowView(item: item)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture { itemToEdit = item }
+                                    .rowTap { itemToEdit = item }
                                     .swipeActions(edge: .trailing) {
                                         Button(role: .destructive) {
-                                            shoppingStore.delete(item, householdId: householdId)
+                                            delete(item)
                                         } label: { Label("Delete", systemImage: "trash") }
                                     }
                                     .swipeActions(edge: .leading) {
@@ -172,6 +171,14 @@ struct ShoppingListView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: { Text("This will delete \(purchased.count) purchased item(s).") }
+        }
+    }
+
+    private func delete(_ item: ShoppingItemDoc) {
+        let hid = householdId
+        shoppingStore.delete(item, householdId: hid)
+        undoCenter.show("Deleted \"\(item.nameSafe)\"") { [shoppingStore] in
+            shoppingStore.save(item, householdId: hid)
         }
     }
 

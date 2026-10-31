@@ -10,10 +10,19 @@ struct SavedMealsView: View {
     @EnvironmentObject private var appSettings:    AppSettings
     @EnvironmentObject private var savedMealStore: SavedMealStore
     @EnvironmentObject private var householdCtrl:  HouseholdController
+    @EnvironmentObject private var undoCenter:     UndoCenter
 
     @State private var mealToPlan: SavedMealDoc? = nil
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
+
+    private func delete(_ saved: SavedMealDoc) {
+        let hid = householdId
+        savedMealStore.delete(saved, householdId: hid)
+        undoCenter.show("Deleted \"\(saved.name)\"") { [savedMealStore] in
+            savedMealStore.save(saved, householdId: hid)
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -21,11 +30,10 @@ struct SavedMealsView: View {
             List {
                 ForEach(savedMealStore.savedMeals) { saved in
                     savedMealRow(saved)
-                        .contentShape(Rectangle())
-                        .onTapGesture { mealToPlan = saved }
+                        .rowTap { mealToPlan = saved }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
-                                savedMealStore.delete(saved, householdId: householdId)
+                                delete(saved)
                             } label: { Label("Delete", systemImage: "trash") }
                         }
                         .contextMenu {
@@ -36,7 +44,7 @@ struct SavedMealsView: View {
                                 Label("Share", systemImage: "square.and.arrow.up")
                             }
                             Button(role: .destructive) {
-                                savedMealStore.delete(saved, householdId: householdId)
+                                delete(saved)
                             } label: { Label("Delete", systemImage: "trash") }
                         }
                 }
@@ -60,6 +68,7 @@ struct SavedMealsView: View {
                 MealFormView(meal: nil, template: saved)
             }
         }
+        .undoBanner()   // a sheet covers RootView's banner
     }
 
     private func savedMealRow(_ saved: SavedMealDoc) -> some View {

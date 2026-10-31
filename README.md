@@ -27,7 +27,9 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 | **Voice entry** | Tap the mic on Chores or Shopping and say what you need — *"add task due tomorrow to clean the bathroom"*. Speech is transcribed on-device, parsed for the date, time, and assignee, then prefills the normal form for you to confirm |
 | **Local notifications** | Due-date reminders for chores and need-by reminders for shopping items at 9 am — or at the item's own time when one is set (day-of and/or day-before), filterable to my/shared/all in Settings |
 | **Auto-cleanup** | Completed chores, purchased items, past meals, ended trips, and harvested or done-for-the-season plants are deleted automatically after 1 week |
-| **Easy UI** | Swipe to complete or delete; tap to edit; colour-coded urgency sections; VoiceOver labels and 44 pt tap targets throughout |
+| **Easy UI** | Swipe to complete or delete; tap a row to edit; colour-coded urgency sections; VoiceOver labels and 44 pt tap targets throughout |
+| **Undo deletes** | Deleting a chore, item, meal, plant, packing item, or wish happens straight away with a "Deleted · Undo" banner for 5 seconds — no confirmation pop-ups. Trips (which take their packing list with them) and bulk clears still ask first |
+| **Safe member removal** | Removing a household member asks first and re-maps everyone's assignments, so items never slide onto the wrong person; anything only assigned to the removed member becomes Everyone's |
 
 ---
 

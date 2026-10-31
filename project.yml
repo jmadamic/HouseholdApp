@@ -60,6 +60,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.householdapp.app
+        # Makes Color.accentColor (and alerts, toggles, tab bar) use the green
+        # AccentColor asset; without it iOS falls back to system blue.
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_FILE: HouseholdApp/Info.plist

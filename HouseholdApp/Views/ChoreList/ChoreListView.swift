@@ -7,12 +7,11 @@ struct ChoreListView: View {
     @EnvironmentObject private var choreStore:    ChoreStore
     @EnvironmentObject private var categoryStore: CategoryStore
     @EnvironmentObject private var householdCtrl: HouseholdController
+    @EnvironmentObject private var undoCenter:    UndoCenter
 
     @State private var filterIndex     = -2   // -2=All, 0+=member
     @State private var showingAddChore = false
     @State private var choreToEdit: ChoreDoc?  = nil
-    @State private var showDeleteAlert = false
-    @State private var choreToDelete: ChoreDoc? = nil
     @State private var showingVoice = false
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
@@ -44,11 +43,10 @@ struct ChoreListView: View {
                         Section {
                             ForEach(chores(in: section)) { chore in
                                 ChoreRowView(chore: chore)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture { choreToEdit = chore }
+                                    .rowTap { choreToEdit = chore }
                                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                         Button(role: .destructive) {
-                                            choreToDelete = chore; showDeleteAlert = true
+                                            delete(chore)
                                         } label: { Label("Delete", systemImage: "trash") }
                                     }
                                     .swipeActions(edge: .leading) {
@@ -90,12 +88,14 @@ struct ChoreListView: View {
             .sheet(isPresented: $showingAddChore)   { ChoreFormView(chore: nil) }
             .sheet(isPresented: $showingVoice)      { VoiceCaptureView() }
             .sheet(item: $choreToEdit)              { ChoreFormView(chore: $0) }
-            .alert("Delete Chore?", isPresented: $showDeleteAlert, presenting: choreToDelete) { chore in
-                Button("Delete", role: .destructive) {
-                    choreStore.delete(chore, householdId: householdId)
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: { Text("\"\($0.titleSafe)\" will be permanently deleted.") }
+        }
+    }
+
+    private func delete(_ chore: ChoreDoc) {
+        let hid = householdId
+        choreStore.delete(chore, householdId: hid)
+        undoCenter.show("Deleted \"\(chore.titleSafe)\"") { [choreStore] in
+            choreStore.save(chore, householdId: hid)
         }
     }
 

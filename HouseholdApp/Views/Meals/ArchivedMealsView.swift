@@ -9,12 +9,19 @@ struct ArchivedMealsView: View {
 
     @EnvironmentObject private var mealStore:     MealStore
     @EnvironmentObject private var householdCtrl: HouseholdController
+    @EnvironmentObject private var undoCenter:    UndoCenter
 
     @State private var mealToOpen: MealDoc? = nil
-    @State private var mealToDelete: MealDoc? = nil
-    @State private var showDeleteAlert = false
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
+
+    private func delete(_ meal: MealDoc) {
+        let hid = householdId
+        mealStore.delete(meal, householdId: hid)
+        undoCenter.show("Deleted \"\(meal.displayName)\"") { [mealStore] in
+            mealStore.save(meal, householdId: hid)
+        }
+    }
     private var archived: [MealDoc] { mealStore.archivedMeals.sorted { $0.day > $1.day } }
 
     var body: some View {
@@ -24,8 +31,7 @@ struct ArchivedMealsView: View {
                 Section {
                     ForEach(archived) { meal in
                         MealRowView(meal: meal)
-                            .contentShape(Rectangle())
-                            .onTapGesture { mealToOpen = meal }
+                            .rowTap { mealToOpen = meal }
                             .swipeActions(edge: .leading) {
                                 Button {
                                     mealStore.setArchived(meal, false, householdId: householdId)
@@ -34,7 +40,7 @@ struct ArchivedMealsView: View {
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
-                                    mealToDelete = meal; showDeleteAlert = true
+                                    delete(meal)
                                 } label: { Label("Delete", systemImage: "trash") }
                             }
                     }
@@ -53,9 +59,5 @@ struct ArchivedMealsView: View {
         .navigationTitle("Archived Meals")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $mealToOpen) { MealFormView(meal: $0) }
-        .alert("Delete Meal?", isPresented: $showDeleteAlert, presenting: mealToDelete) { meal in
-            Button("Delete", role: .destructive) { mealStore.delete(meal, householdId: householdId) }
-            Button("Cancel", role: .cancel) {}
-        } message: { Text("\"\($0.displayName)\" will be permanently deleted.") }
     }
 }
