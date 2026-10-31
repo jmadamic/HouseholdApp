@@ -284,7 +284,7 @@ The source of truth is `project.yml` — never edit `project.pbxproj` by hand.
 
 | Layer | Technology |
 |---|---|
-| UI | SwiftUI |
+| UI | SwiftUI — every swipe-to-delete list stays mounted when empty, with its empty state as an overlay (swapping the `List` out mid-delete crashes UIKit) |
 | Backend | Firebase — Cloud Firestore (real-time sync + offline cache), Firebase Auth (anonymous + Google) |
 | Notifications | Local only (`UNUserNotificationCenter`) |
 | Settings storage | UserDefaults via `@AppStorage` (device-local prefs) |

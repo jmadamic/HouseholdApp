@@ -20,54 +20,54 @@ struct WishListView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            // Overlaid, not swapped in: see "Lists stay mounted when empty" in CLAUDE.md.
+            List {
+                if !active.isEmpty {
+                    Section {
+                        ForEach(active) { wish in
+                            NavigationLink { WishDetailView(wish: wish) } label: { wishRow(wish) }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        wishToDelete = wish; showDeleteAlert = true
+                                    } label: { Label("Delete", systemImage: "trash") }
+                                }
+                        }
+                    } header: {
+                        HStack {
+                            Text("Looking for").font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text("\(active.count)").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                if !got.isEmpty {
+                    Section {
+                        ForEach(got) { wish in
+                            NavigationLink { WishDetailView(wish: wish) } label: { wishRow(wish) }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        wishToDelete = wish; showDeleteAlert = true
+                                    } label: { Label("Delete", systemImage: "trash") }
+                                }
+                        }
+                    } header: {
+                        HStack {
+                            Text("Got it").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(got.count)").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
+            .overlay {
                 if wishStore.wishes.isEmpty {
                     ContentUnavailableView(
                         "Nothing On The List", systemImage: "sparkles",
                         description: Text("Tap + to add something you're looking for — then collect must-haves, research notes, and links together.")
                     )
-                } else {
-                    List {
-                        if !active.isEmpty {
-                            Section {
-                                ForEach(active) { wish in
-                                    NavigationLink { WishDetailView(wish: wish) } label: { wishRow(wish) }
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            Button(role: .destructive) {
-                                                wishToDelete = wish; showDeleteAlert = true
-                                            } label: { Label("Delete", systemImage: "trash") }
-                                        }
-                                }
-                            } header: {
-                                HStack {
-                                    Text("Looking for").font(.subheadline.weight(.semibold))
-                                    Spacer()
-                                    Text("\(active.count)").font(.caption).foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-
-                        if !got.isEmpty {
-                            Section {
-                                ForEach(got) { wish in
-                                    NavigationLink { WishDetailView(wish: wish) } label: { wishRow(wish) }
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            Button(role: .destructive) {
-                                                wishToDelete = wish; showDeleteAlert = true
-                                            } label: { Label("Delete", systemImage: "trash") }
-                                        }
-                                }
-                            } header: {
-                                HStack {
-                                    Text("Got it").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text("\(got.count)").font(.caption).foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                    .listStyle(.insetGrouped)
-                    .listSectionSpacing(.compact)
                 }
             }
             .navigationTitle("Looking For")
