@@ -186,7 +186,11 @@ The signature interaction. An SF Symbol `circle` in secondary color that becomes
 ### Lists and Rows
 - **Container:** `.insetGrouped` list; white cells on the grouped background.
 - **Row:** check button, Body title, Caption metadata in secondary (red when overdue), trailing badges.
-- **Swipe actions:** leading = positive (Restore green, Archive); trailing = destructive Delete. Delete of anything with children goes through a confirmation alert naming the count.
+- **Swipe actions:** leading = positive (Restore green, Archive); trailing = destructive Delete, which keeps the system red (never set an explicit root `.tint`). A single-item delete is immediate and shows the Undo banner; deleting anything with children (a trip and its packing list) goes through a confirmation alert naming the count.
+- **Tap to edit:** the whole row is a button (`.rowTap`) that dims while pressed; check circles and link badges inside it keep their own taps.
+
+### Undo Banner
+After a delete: a single line ("Deleted \"Milk\"") with an Undo text button, on `.regularMaterial` with 12 pt corners, 16 pt inset, just above the tab bar. Stays 5 seconds, announced to VoiceOver. It's the only floating element in the app, and it carries no shadow.
 
 ### Filter Bar
 Horizontal row: "All" plus each member by name. The selected tab takes that member's color; filtering shows items assigned to Everyone too.

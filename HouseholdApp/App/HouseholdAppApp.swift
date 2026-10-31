@@ -18,6 +18,7 @@ struct HouseholdAppApp: App {
     @StateObject private var gardenStore       = GardenStore()
     @StateObject private var wishStore         = WishStore()
     @StateObject private var router            = TabRouter()
+    @StateObject private var undoCenter        = UndoCenter()
 
     init() {
         FirebaseApp.configure()
@@ -52,6 +53,7 @@ struct HouseholdAppApp: App {
                 .environmentObject(gardenStore)
                 .environmentObject(wishStore)
                 .environmentObject(router)
+                .environmentObject(undoCenter)
                 .onAppear(perform: onRootAppear)
                 .task { await NotificationManager.shared.requestPermissionIfNeeded() }
                 .onChange(of: householdCtrl.household?.id) { _, newId in

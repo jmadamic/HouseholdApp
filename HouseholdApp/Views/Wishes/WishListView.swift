@@ -8,12 +8,19 @@ struct WishListView: View {
     @EnvironmentObject private var appSettings:   AppSettings
     @EnvironmentObject private var wishStore:     WishStore
     @EnvironmentObject private var householdCtrl: HouseholdController
+    @EnvironmentObject private var undoCenter:    UndoCenter
 
     @State private var showingAddWish = false
-    @State private var showDeleteAlert = false
-    @State private var wishToDelete: WishDoc? = nil
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
+
+    private func delete(_ wish: WishDoc) {
+        let hid = householdId
+        wishStore.delete(wish, householdId: hid)
+        undoCenter.show("Deleted \"\(wish.nameSafe)\"") { [wishStore] in
+            wishStore.save(wish, householdId: hid)
+        }
+    }
 
     private var active: [WishDoc] { wishStore.wishes.filter { $0.statusEnum != .got } }
     private var got:    [WishDoc] { wishStore.wishes.filter { $0.statusEnum == .got } }
@@ -28,7 +35,7 @@ struct WishListView: View {
                             NavigationLink { WishDetailView(wish: wish) } label: { wishRow(wish) }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
-                                        wishToDelete = wish; showDeleteAlert = true
+                                        delete(wish)
                                     } label: { Label("Delete", systemImage: "trash") }
                                 }
                         }
@@ -47,7 +54,7 @@ struct WishListView: View {
                             NavigationLink { WishDetailView(wish: wish) } label: { wishRow(wish) }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
-                                        wishToDelete = wish; showDeleteAlert = true
+                                        delete(wish)
                                     } label: { Label("Delete", systemImage: "trash") }
                                 }
                         }
@@ -80,14 +87,6 @@ struct WishListView: View {
                 }
             }
             .sheet(isPresented: $showingAddWish) { WishFormView(wish: nil) }
-            .alert("Delete?", isPresented: $showDeleteAlert, presenting: wishToDelete) { wish in
-                Button("Delete", role: .destructive) {
-                    wishStore.delete(wish, householdId: householdId)
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: { wish in
-                Text("\"\(wish.nameSafe)\" and all its notes, criteria, and links will be permanently deleted.")
-            }
         }
     }
 

@@ -12,6 +12,7 @@ struct TripDetailView: View {
     @EnvironmentObject private var mealStore:     MealStore
     @EnvironmentObject private var choreStore:    ChoreStore
     @EnvironmentObject private var householdCtrl: HouseholdController
+    @EnvironmentObject private var undoCenter:    UndoCenter
     @EnvironmentObject private var router:        TabRouter
 
     let trip: TripDoc
@@ -22,6 +23,14 @@ struct TripDetailView: View {
     @State private var newSectionName    = ""
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
+
+    private func delete(_ item: PackingItemDoc) {
+        let hid = householdId
+        packingStore.delete(item, householdId: hid)
+        undoCenter.show("Deleted \"\(item.nameSafe)\"") { [packingStore] in
+            packingStore.save(item, householdId: hid)
+        }
+    }
     private var tripItems: [PackingItemDoc] { packingStore.items(forTrip: trip.id) }
     private var linkedMeals:  [MealDoc]  { mealStore.meals.filter { $0.tripId == trip.id } }
     private var linkedChores: [ChoreDoc] { choreStore.chores.filter { $0.tripId == trip.id } }
@@ -82,7 +91,7 @@ struct TripDetailView: View {
                         packingRow(item)
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
-                                    packingStore.delete(item, householdId: householdId)
+                                    delete(item)
                                 } label: { Label("Delete", systemImage: "trash") }
                             }
                     }
@@ -102,8 +111,7 @@ struct TripDetailView: View {
                 Section {
                     ForEach(linkedMeals) { meal in
                         MealRowView(meal: meal)
-                            .contentShape(Rectangle())
-                            .onTapGesture { router.openMeal(meal.id) }
+                            .rowTap { router.openMeal(meal.id) }
                     }
                 } header: {
                     Label("Meals on this trip", systemImage: "fork.knife")
