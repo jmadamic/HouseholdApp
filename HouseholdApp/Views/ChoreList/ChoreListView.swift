@@ -38,36 +38,38 @@ struct ChoreListView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 filterBar
-                if filteredChores.isEmpty {
-                    if choreStore.chores.isEmpty {
-                        ContentUnavailableView("No Chores", systemImage: "checkmark.seal.fill",
-                                              description: Text("Tap + to add your first chore."))
-                    } else {
-                        ContentUnavailableView("Nothing Here", systemImage: "line.3.horizontal.decrease.circle",
-                                              description: Text("No chores for \(appSettings.memberName(at: filterIndex)). Try the All tab."))
+                // Overlaid, not swapped in: see "Lists stay mounted when empty" in CLAUDE.md.
+                List {
+                    ForEach(sections, id: \.self) { section in
+                        Section {
+                            ForEach(chores(in: section)) { chore in
+                                ChoreRowView(chore: chore)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { choreToEdit = chore }
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            choreToDelete = chore; showDeleteAlert = true
+                                        } label: { Label("Delete", systemImage: "trash") }
+                                    }
+                                    .swipeActions(edge: .leading) {
+                                        completeSwipeAction(for: chore)
+                                    }
+                            }
+                        } header: { sectionHeader(section) }
                     }
-                } else {
-                    List {
-                        ForEach(sections, id: \.self) { section in
-                            Section {
-                                ForEach(chores(in: section)) { chore in
-                                    ChoreRowView(chore: chore)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { choreToEdit = chore }
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            Button(role: .destructive) {
-                                                choreToDelete = chore; showDeleteAlert = true
-                                            } label: { Label("Delete", systemImage: "trash") }
-                                        }
-                                        .swipeActions(edge: .leading) {
-                                            completeSwipeAction(for: chore)
-                                        }
-                                }
-                            } header: { sectionHeader(section) }
+                }
+                .listStyle(.insetGrouped)
+                .listSectionSpacing(.compact)
+                .overlay {
+                    if filteredChores.isEmpty {
+                        if choreStore.chores.isEmpty {
+                            ContentUnavailableView("No Chores", systemImage: "checkmark.seal.fill",
+                                                  description: Text("Tap + to add your first chore."))
+                        } else {
+                            ContentUnavailableView("Nothing Here", systemImage: "line.3.horizontal.decrease.circle",
+                                                  description: Text("No chores for \(appSettings.memberName(at: filterIndex)). Try the All tab."))
                         }
                     }
-                    .listStyle(.insetGrouped)
-                    .listSectionSpacing(.compact)
                 }
             }
             .navigationTitle("Chores")

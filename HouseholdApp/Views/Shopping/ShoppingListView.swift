@@ -69,73 +69,75 @@ struct ShoppingListView: View {
                 .padding(.horizontal).padding(.vertical, 5)
                 .background(Color(.systemGroupedBackground))
 
-                if filteredItems.isEmpty {
-                    if shoppingStore.items.isEmpty {
-                        ContentUnavailableView("No Items", systemImage: "cart",
-                                              description: Text("Tap + to add your first shopping item."))
-                    } else {
-                        ContentUnavailableView("Nothing Here", systemImage: "line.3.horizontal.decrease.circle",
-                                              description: Text("No items for \(appSettings.memberName(at: filterIndex)). Try the All tab."))
-                    }
-                } else {
-                    List {
-                        ForEach(sectionKeys, id: \.self) { key in
-                            Section {
-                                ForEach(items(for: key)) { item in
-                                    ShoppingRowView(item: item)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { itemToEdit = item }
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            Button(role: .destructive) {
-                                                shoppingStore.delete(item, householdId: householdId)
-                                            } label: { Label("Delete", systemImage: "trash") }
-                                        }
-                                        .swipeActions(edge: .leading) {
-                                            Button {
-                                                shoppingStore.markPurchased(item, householdId: householdId)
-                                            } label: { Label("Got It", systemImage: "checkmark") }
-                                            .tint(.green)
-                                        }
-                                }
-                            } header: {
-                                HStack {
-                                    sectionIcon(for: key)
-                                    Text(key).font(.subheadline.weight(.semibold))
-                                    Spacer()
-                                    Text("\(items(for: key).count)").font(.caption).foregroundStyle(.secondary)
-                                }
+                // Overlaid, not swapped in: see "Lists stay mounted when empty" in CLAUDE.md.
+                List {
+                    ForEach(sectionKeys, id: \.self) { key in
+                        Section {
+                            ForEach(items(for: key)) { item in
+                                ShoppingRowView(item: item)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { itemToEdit = item }
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            shoppingStore.delete(item, householdId: householdId)
+                                        } label: { Label("Delete", systemImage: "trash") }
+                                    }
+                                    .swipeActions(edge: .leading) {
+                                        Button {
+                                            shoppingStore.markPurchased(item, householdId: householdId)
+                                        } label: { Label("Got It", systemImage: "checkmark") }
+                                        .tint(.green)
+                                    }
+                            }
+                        } header: {
+                            HStack {
+                                sectionIcon(for: key)
+                                Text(key).font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Text("\(items(for: key).count)").font(.caption).foregroundStyle(.secondary)
                             }
                         }
+                    }
 
-                        if !purchased.isEmpty {
-                            Section {
-                                ForEach(purchased) { item in
-                                    ShoppingRowView(item: item)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { itemToEdit = item }
-                                        .swipeActions(edge: .trailing) {
-                                            Button(role: .destructive) {
-                                                shoppingStore.delete(item, householdId: householdId)
-                                            } label: { Label("Delete", systemImage: "trash") }
-                                        }
-                                        .swipeActions(edge: .leading) {
-                                            Button {
-                                                shoppingStore.markUnpurchased(item, householdId: householdId)
-                                            } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
-                                            .tint(.orange)
-                                        }
-                                }
-                            } header: {
-                                HStack {
-                                    Text("Purchased").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text("\(purchased.count)").font(.caption).foregroundStyle(.secondary)
-                                }
+                    if !purchased.isEmpty {
+                        Section {
+                            ForEach(purchased) { item in
+                                ShoppingRowView(item: item)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { itemToEdit = item }
+                                    .swipeActions(edge: .trailing) {
+                                        Button(role: .destructive) {
+                                            shoppingStore.delete(item, householdId: householdId)
+                                        } label: { Label("Delete", systemImage: "trash") }
+                                    }
+                                    .swipeActions(edge: .leading) {
+                                        Button {
+                                            shoppingStore.markUnpurchased(item, householdId: householdId)
+                                        } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
+                                        .tint(.orange)
+                                    }
+                            }
+                        } header: {
+                            HStack {
+                                Text("Purchased").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                                Spacer()
+                                Text("\(purchased.count)").font(.caption).foregroundStyle(.secondary)
                             }
                         }
                     }
-                    .listStyle(.insetGrouped)
-                    .listSectionSpacing(.compact)
+                }
+                .listStyle(.insetGrouped)
+                .listSectionSpacing(.compact)
+                .overlay {
+                    if filteredItems.isEmpty {
+                        if shoppingStore.items.isEmpty {
+                            ContentUnavailableView("No Items", systemImage: "cart",
+                                                  description: Text("Tap + to add your first shopping item."))
+                        } else {
+                            ContentUnavailableView("Nothing Here", systemImage: "line.3.horizontal.decrease.circle",
+                                                  description: Text("No items for \(appSettings.memberName(at: filterIndex)). Try the All tab."))
+                        }
+                    }
                 }
             }
             .navigationTitle("Shopping")

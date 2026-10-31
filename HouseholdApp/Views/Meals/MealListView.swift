@@ -59,77 +59,79 @@ struct MealListView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 filterBar
-                if filteredMeals.isEmpty && mealStore.archivedMeals.isEmpty {
-                    if mealStore.activeMeals.isEmpty {
-                        ContentUnavailableView("No Meals Planned", systemImage: "fork.knife",
-                                              description: Text("Tap + to plan your first meal."))
-                    } else {
-                        ContentUnavailableView("Nothing Here", systemImage: "line.3.horizontal.decrease.circle",
-                                              description: Text("No meals for \(appSettings.memberName(at: filterIndex)). Try the All tab."))
-                    }
-                } else {
-                    List {
-                        ForEach(days, id: \.self) { day in
-                            Section {
-                                ForEach(meals(on: day)) { meal in
-                                    MealRowView(meal: meal)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { mealToEdit = meal }
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            Button(role: .destructive) {
-                                                mealToDelete = meal; showDeleteAlert = true
-                                            } label: { Label("Delete", systemImage: "trash") }
-                                        }
-                                        .swipeActions(edge: .leading) { archiveAction(meal) }
-                                }
-                            } header: {
-                                HStack {
-                                    Text(dayHeader(day)).font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(Calendar.current.isDateInToday(day) ? .blue : .secondary)
-                                    Spacer()
-                                    Text("\(meals(on: day).count)").font(.caption).foregroundStyle(.secondary)
-                                }
+                // Overlaid, not swapped in: see "Lists stay mounted when empty" in CLAUDE.md.
+                List {
+                    ForEach(days, id: \.self) { day in
+                        Section {
+                            ForEach(meals(on: day)) { meal in
+                                MealRowView(meal: meal)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { mealToEdit = meal }
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            mealToDelete = meal; showDeleteAlert = true
+                                        } label: { Label("Delete", systemImage: "trash") }
+                                    }
+                                    .swipeActions(edge: .leading) { archiveAction(meal) }
                             }
-                        }
-
-                        // Past meals live at the bottom, newest first.
-                        if !pastMeals.isEmpty {
-                            Section {
-                                ForEach(pastMeals) { meal in
-                                    MealRowView(meal: meal)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { mealToEdit = meal }
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            Button(role: .destructive) {
-                                                mealToDelete = meal; showDeleteAlert = true
-                                            } label: { Label("Delete", systemImage: "trash") }
-                                        }
-                                        .swipeActions(edge: .leading) { archiveAction(meal) }
-                                }
-                            } header: {
-                                HStack {
-                                    Text("Completed").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text("\(pastMeals.count)").font(.caption).foregroundStyle(.secondary)
-                                }
-                            } footer: {
-                                Text("Completed meals clear after a week. Swipe right to archive one you want to keep.")
-                            }
-                        }
-
-                        if !mealStore.archivedMeals.isEmpty {
-                            Section {
-                                NavigationLink {
-                                    ArchivedMealsView()
-                                } label: {
-                                    Label("Archived Meals", systemImage: "archivebox")
-                                        .badge(mealStore.archivedMeals.count)
-                                }
+                        } header: {
+                            HStack {
+                                Text(dayHeader(day)).font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Calendar.current.isDateInToday(day) ? .blue : .secondary)
+                                Spacer()
+                                Text("\(meals(on: day).count)").font(.caption).foregroundStyle(.secondary)
                             }
                         }
                     }
-                    .listStyle(.insetGrouped)
-                    .listSectionSpacing(.compact)
+
+                    // Past meals live at the bottom, newest first.
+                    if !pastMeals.isEmpty {
+                        Section {
+                            ForEach(pastMeals) { meal in
+                                MealRowView(meal: meal)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { mealToEdit = meal }
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            mealToDelete = meal; showDeleteAlert = true
+                                        } label: { Label("Delete", systemImage: "trash") }
+                                    }
+                                    .swipeActions(edge: .leading) { archiveAction(meal) }
+                            }
+                        } header: {
+                            HStack {
+                                Text("Completed").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                                Spacer()
+                                Text("\(pastMeals.count)").font(.caption).foregroundStyle(.secondary)
+                            }
+                        } footer: {
+                            Text("Completed meals clear after a week. Swipe right to archive one you want to keep.")
+                        }
+                    }
+
+                    if !mealStore.archivedMeals.isEmpty {
+                        Section {
+                            NavigationLink {
+                                ArchivedMealsView()
+                            } label: {
+                                Label("Archived Meals", systemImage: "archivebox")
+                                    .badge(mealStore.archivedMeals.count)
+                            }
+                        }
+                    }
+                }
+                .listStyle(.insetGrouped)
+                .listSectionSpacing(.compact)
+                .overlay {
+                    if filteredMeals.isEmpty && mealStore.archivedMeals.isEmpty {
+                        if mealStore.activeMeals.isEmpty {
+                            ContentUnavailableView("No Meals Planned", systemImage: "fork.knife",
+                                                  description: Text("Tap + to plan your first meal."))
+                        } else {
+                            ContentUnavailableView("Nothing Here", systemImage: "line.3.horizontal.decrease.circle",
+                                                  description: Text("No meals for \(appSettings.memberName(at: filterIndex)). Try the All tab."))
+                        }
+                    }
                 }
             }
             .navigationTitle("Meals")

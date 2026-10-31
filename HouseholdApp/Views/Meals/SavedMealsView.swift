@@ -17,38 +17,38 @@ struct SavedMealsView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            // Overlaid, not swapped in: see "Lists stay mounted when empty" in CLAUDE.md.
+            List {
+                ForEach(savedMealStore.savedMeals) { saved in
+                    savedMealRow(saved)
+                        .contentShape(Rectangle())
+                        .onTapGesture { mealToPlan = saved }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                savedMealStore.delete(saved, householdId: householdId)
+                            } label: { Label("Delete", systemImage: "trash") }
+                        }
+                        .contextMenu {
+                            Button { mealToPlan = saved } label: {
+                                Label("Plan This Meal", systemImage: "calendar.badge.plus")
+                            }
+                            ShareLink(item: exportText(for: saved)) {
+                                Label("Share", systemImage: "square.and.arrow.up")
+                            }
+                            Button(role: .destructive) {
+                                savedMealStore.delete(saved, householdId: householdId)
+                            } label: { Label("Delete", systemImage: "trash") }
+                        }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
+            .overlay {
                 if savedMealStore.savedMeals.isEmpty {
                     ContentUnavailableView(
                         "No Saved Meals", systemImage: "text.book.closed",
                         description: Text("When editing a meal, tap \"Save to My Meals\" to keep it here for reuse.")
                     )
-                } else {
-                    List {
-                        ForEach(savedMealStore.savedMeals) { saved in
-                            savedMealRow(saved)
-                                .contentShape(Rectangle())
-                                .onTapGesture { mealToPlan = saved }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) {
-                                        savedMealStore.delete(saved, householdId: householdId)
-                                    } label: { Label("Delete", systemImage: "trash") }
-                                }
-                                .contextMenu {
-                                    Button { mealToPlan = saved } label: {
-                                        Label("Plan This Meal", systemImage: "calendar.badge.plus")
-                                    }
-                                    ShareLink(item: exportText(for: saved)) {
-                                        Label("Share", systemImage: "square.and.arrow.up")
-                                    }
-                                    Button(role: .destructive) {
-                                        savedMealStore.delete(saved, householdId: householdId)
-                                    } label: { Label("Delete", systemImage: "trash") }
-                                }
-                        }
-                    }
-                    .listStyle(.insetGrouped)
-                    .listSectionSpacing(.compact)
                 }
             }
             .navigationTitle("My Meals")

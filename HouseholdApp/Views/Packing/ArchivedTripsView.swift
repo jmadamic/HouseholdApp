@@ -18,48 +18,50 @@ struct ArchivedTripsView: View {
     private var archived: [TripDoc] { tripStore.archivedTrips.sorted { $0.startDate > $1.startDate } }
 
     var body: some View {
-        Group {
+        // Overlaid, not swapped in: see "Lists stay mounted when empty" in CLAUDE.md.
+        List {
+            if !archived.isEmpty {
+                Section {
+                    ForEach(archived) { trip in
+                        NavigationLink {
+                            TripDetailView(trip: trip)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "archivebox.fill")
+                                    .font(.title3).foregroundStyle(.secondary).frame(width: 32)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(trip.nameSafe)
+                                    Text(trip.dateRangeLabel).font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                let count = packingStore.items(forTrip: trip.id).count
+                                if count > 0 {
+                                    Text("\(count) items").font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .swipeActions(edge: .leading) {
+                            Button {
+                                tripStore.setArchived(trip, false, householdId: householdId)
+                            } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
+                            .tint(.green)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                tripToDelete = trip; showDeleteAlert = true
+                            } label: { Label("Delete", systemImage: "trash") }
+                        }
+                    }
+                } footer: {
+                    Text("Archived trips keep their packing lists and never auto-clean. Swipe right to restore, or left to delete the trip and its items for good.")
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .overlay {
             if archived.isEmpty {
                 ContentUnavailableView("No Archived Trips", systemImage: "archivebox",
                                       description: Text("Swipe right on a trip and choose Archive to keep it and its packing list for next time."))
-            } else {
-                List {
-                    Section {
-                        ForEach(archived) { trip in
-                            NavigationLink {
-                                TripDetailView(trip: trip)
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "archivebox.fill")
-                                        .font(.title3).foregroundStyle(.secondary).frame(width: 32)
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(trip.nameSafe)
-                                        Text(trip.dateRangeLabel).font(.caption).foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                    let count = packingStore.items(forTrip: trip.id).count
-                                    if count > 0 {
-                                        Text("\(count) items").font(.caption).foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                            .swipeActions(edge: .leading) {
-                                Button {
-                                    tripStore.setArchived(trip, false, householdId: householdId)
-                                } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
-                                .tint(.green)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    tripToDelete = trip; showDeleteAlert = true
-                                } label: { Label("Delete", systemImage: "trash") }
-                            }
-                        }
-                    } footer: {
-                        Text("Archived trips keep their packing lists and never auto-clean. Swipe right to restore, or left to delete the trip and its items for good.")
-                    }
-                }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Archived Trips")

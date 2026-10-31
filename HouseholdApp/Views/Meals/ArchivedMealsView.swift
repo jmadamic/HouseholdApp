@@ -18,34 +18,36 @@ struct ArchivedMealsView: View {
     private var archived: [MealDoc] { mealStore.archivedMeals.sorted { $0.day > $1.day } }
 
     var body: some View {
-        Group {
+        // Overlaid, not swapped in: see "Lists stay mounted when empty" in CLAUDE.md.
+        List {
+            if !archived.isEmpty {
+                Section {
+                    ForEach(archived) { meal in
+                        MealRowView(meal: meal)
+                            .contentShape(Rectangle())
+                            .onTapGesture { mealToOpen = meal }
+                            .swipeActions(edge: .leading) {
+                                Button {
+                                    mealStore.setArchived(meal, false, householdId: householdId)
+                                } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
+                                .tint(.green)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    mealToDelete = meal; showDeleteAlert = true
+                                } label: { Label("Delete", systemImage: "trash") }
+                            }
+                    }
+                } footer: {
+                    Text("Archived meals never auto-clean. Swipe right to restore to the plan, or left to delete for good.")
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .overlay {
             if archived.isEmpty {
                 ContentUnavailableView("No Archived Meals", systemImage: "archivebox",
                                       description: Text("Swipe right on a meal and choose Archive to keep it here instead of deleting it."))
-            } else {
-                List {
-                    Section {
-                        ForEach(archived) { meal in
-                            MealRowView(meal: meal)
-                                .contentShape(Rectangle())
-                                .onTapGesture { mealToOpen = meal }
-                                .swipeActions(edge: .leading) {
-                                    Button {
-                                        mealStore.setArchived(meal, false, householdId: householdId)
-                                    } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
-                                    .tint(.green)
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) {
-                                        mealToDelete = meal; showDeleteAlert = true
-                                    } label: { Label("Delete", systemImage: "trash") }
-                                }
-                        }
-                    } footer: {
-                        Text("Archived meals never auto-clean. Swipe right to restore to the plan, or left to delete for good.")
-                    }
-                }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Archived Meals")
