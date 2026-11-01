@@ -312,6 +312,22 @@
       "description": "Icon picker tile; solid accent only when selected.",
       "html": "<button class=\"ds-tile\">🛒</button><button class=\"ds-tile ds-tile-sel\">🍳</button>",
       "css": ".ds-tile{width:40px;height:40px;border-radius:8px;border:0;font-size:20px;background:rgba(69,168,109,.12);color:#45A86D;cursor:pointer;margin-right:8px}.ds-tile:hover{background:rgba(69,168,109,.2)}.ds-tile-sel{background:#45A86D;color:#fff}"
+    },
+    {
+      "name": "Assignee Avatars",
+      "kind": "custom",
+      "refersTo": "assignee-avatars",
+      "description": "Trailing row avatars: member initial in member color on a 15% wash; Everyone is a two-person glyph in purple. Up to three, then +N.",
+      "html": "<span class=\"ds-av\" style=\"--c:#007AFF\">J</span><span class=\"ds-av\" style=\"--c:#FF2D55\">S</span><span class=\"ds-av\" style=\"--c:#AF52DE\">&#x1F465;&#xFE0E;</span>",
+      "css": ".ds-av{display:inline-grid;place-items:center;width:20px;height:20px;margin-left:3px;border-radius:50%;font:700 11px -apple-system,system-ui;color:var(--c);background:color-mix(in srgb,var(--c) 15%,transparent)}"
+    },
+    {
+      "name": "Undo Banner",
+      "kind": "custom",
+      "refersTo": "undo-banner",
+      "description": "Shown for 5s after a single-item delete, just above the tab bar: message plus an Undo text button on a system material. No shadow.",
+      "html": "<div class=\"ds-undo\"><span>Deleted \"Milk\"</span><button>Undo</button></div>",
+      "css": ".ds-undo{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:0 16px;margin:0 16px;border-radius:12px;background:rgba(242,242,247,.85);backdrop-filter:blur(20px);font:400 15px -apple-system,system-ui}.ds-undo button{background:none;border:0;color:#45A86D;font:600 15px -apple-system,system-ui}"
     }
   ],
   "narrative": {

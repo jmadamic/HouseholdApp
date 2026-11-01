@@ -181,7 +181,10 @@ The signature interaction. An SF Symbol `circle` in secondary color that becomes
 
 ### Badges (chips)
 - **Style:** Caption 2 Medium text in the badge's color, on a 12% wash of the same color, capsule shape, 2×6 pt padding. Often led by a small SF Symbol.
-- **Variants:** assignee (member color or Everyone purple), category, garden "Growing" hint, trip, meal link. Tappable link badges route to the other tab.
+- **Variants:** category, garden "Growing" hint, trip, meal link. Tappable link badges route to the other tab.
+
+### Assignee Avatars
+Who an item belongs to, at the trailing edge of every row (`AssigneeBadges`): a 20 pt circle (scales with Dynamic Type) holding the member's initial in bold Caption 2, full-strength member color on a 15% wash of it. Two letters ("Jo", "Je") when two members share an initial. Everyone is the two-person glyph in Everyone purple, same treatment. Up to three avatars, then "+N". Never identify a person by color alone: the letter is the identity, the color is the reinforcement.
 
 ### Lists and Rows
 - **Container:** `.insetGrouped` list; white cells on the grouped background.

@@ -37,7 +37,7 @@ struct ChoreRowView: View {
                     Text(label).font(.caption)
                         .foregroundStyle(chore.isOverdue ? .red : .secondary)
                 }
-                assigneeView
+                AssigneeBadges(indices: chore.assignedToMembers)
             }
         }
         .opacity(chore.isCompleted ? 0.6 : 1.0)
@@ -105,26 +105,5 @@ struct ChoreRowView: View {
     private var repeatBadge: some View {
         Label(chore.repeatLabel, systemImage: "repeat")
             .font(.caption2).foregroundStyle(.secondary)
-    }
-
-    private var assigneeView: some View {
-        let indices = chore.assignedToMembers.sorted()
-        return Group {
-            if indices.isEmpty {
-                Image(systemName: "person.2.fill").font(.caption).foregroundStyle(.purple)
-            } else if indices.count == 1, let idx = indices.first {
-                Image(systemName: "person.fill").font(.caption)
-                    .foregroundStyle(appSettings.memberColor(at: idx))
-            } else {
-                HStack(spacing: 3) {
-                    ForEach(indices.prefix(3), id: \.self) { idx in
-                        Circle().fill(appSettings.memberColor(at: idx)).frame(width: 7, height: 7)
-                    }
-                    if indices.count > 3 {
-                        Text("+\(indices.count - 3)").font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
     }
 }

@@ -124,28 +124,10 @@ struct WishListView: View {
                 }
             }
             Spacer()
-            assigneeView(wish)
+            AssigneeBadges(indices: wish.assignedToMembers)
         }
         .opacity(done ? 0.6 : 1.0)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(wish.nameSafe), \(wish.statusEnum.label). \(wish.summaryLabel)")
-    }
-
-    private func assigneeView(_ wish: WishDoc) -> some View {
-        let indices = wish.assignedToMembers.sorted()
-        return Group {
-            if indices.isEmpty {
-                Image(systemName: "person.2.fill").font(.caption).foregroundStyle(.purple)
-            } else if indices.count == 1, let idx = indices.first {
-                Image(systemName: "person.fill").font(.caption)
-                    .foregroundStyle(appSettings.memberColor(at: idx))
-            } else {
-                HStack(spacing: 3) {
-                    ForEach(indices.prefix(3), id: \.self) { idx in
-                        Circle().fill(appSettings.memberColor(at: idx)).frame(width: 7, height: 7)
-                    }
-                }
-            }
-        }
     }
 }

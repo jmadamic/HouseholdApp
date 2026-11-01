@@ -29,6 +29,7 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 | **Auto-cleanup** | Completed chores, purchased items, past meals, ended trips, and harvested or done-for-the-season plants are deleted automatically after 1 week |
 | **Easy UI** | Swipe to complete or delete; tap a row to edit; colour-coded urgency sections; VoiceOver labels and 44 pt tap targets throughout |
 | **Undo deletes** | Deleting a chore, item, meal, plant, packing item, or wish happens straight away with a "Deleted · Undo" banner for 5 seconds — no confirmation pop-ups. Trips (which take their packing list with them) and bulk clears still ask first |
+| **Who's on it, at a glance** | Every row shows the assigned person's initial in their colour ("J", "S", or "Jo"/"Je" if two names share a letter), or a two-person icon for Everyone — readable without telling colours apart |
 | **Safe member removal** | Removing a household member asks first and re-maps everyone's assignments, so items never slide onto the wrong person; anything only assigned to the removed member becomes Everyone's |
 
 ---
