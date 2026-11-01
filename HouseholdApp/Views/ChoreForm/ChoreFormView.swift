@@ -52,7 +52,7 @@ struct ChoreFormView: View {
                         .tint(appSettings.memberColor(at: idx))
                     }
                     if !selectedMembers.isEmpty {
-                        Button("Select All") { selectedMembers = [] }.foregroundStyle(.blue)
+                        Button("Select All") { selectedMembers = [] }
                     }
                 }
 

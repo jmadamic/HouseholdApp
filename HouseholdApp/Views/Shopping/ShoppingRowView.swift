@@ -94,7 +94,7 @@ struct ShoppingRowView: View {
                 if let store = item.store, !store.isEmpty {
                     Text(store).font(.caption).foregroundStyle(.secondary)
                 }
-                assigneeView
+                AssigneeBadges(indices: item.assignedToMembers)
             }
         }
         .opacity(item.isPurchased ? 0.6 : 1.0)
@@ -119,26 +119,5 @@ struct ShoppingRowView: View {
             parts.append("for \(names)")
         }
         return parts.joined(separator: ", ")
-    }
-
-    private var assigneeView: some View {
-        let indices = item.assignedToMembers.sorted()
-        return Group {
-            if indices.isEmpty {
-                Image(systemName: "person.2.fill").font(.caption).foregroundStyle(.purple)
-            } else if indices.count == 1, let idx = indices.first {
-                Image(systemName: "person.fill").font(.caption)
-                    .foregroundStyle(appSettings.memberColor(at: idx))
-            } else {
-                HStack(spacing: 3) {
-                    ForEach(indices.prefix(3), id: \.self) { idx in
-                        Circle().fill(appSettings.memberColor(at: idx)).frame(width: 7, height: 7)
-                    }
-                    if indices.count > 3 {
-                        Text("+\(indices.count-3)").font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
     }
 }

@@ -215,6 +215,17 @@ class AppSettings: ObservableObject {
         return members.indices.contains(index) ? members[index] : "Member \(index + 1)"
     }
 
+    /// One letter for avatar badges ("J"), or two ("Jo", "Ja") when another
+    /// member's name starts with the same letter, so badges never collide.
+    func memberInitials(at index: Int) -> String {
+        let name = memberName(at: index).trimmingCharacters(in: .whitespaces)
+        guard let first = name.first else { return "?" }
+        let clashes = members.enumerated().contains { i, other in
+            i != index && other.trimmingCharacters(in: .whitespaces).first?.lowercased() == first.lowercased()
+        }
+        return clashes ? String(name.prefix(2)).capitalized : String(first).uppercased()
+    }
+
     func memberColor(at index: Int) -> Color {
         MemberAssignment.memberColors[index % MemberAssignment.memberColors.count]
     }

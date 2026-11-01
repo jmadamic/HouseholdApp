@@ -35,6 +35,54 @@ struct AppIcon: View {
     }
 }
 
+// ── AssigneeBadges ────────────────────────────────────────────────────────────
+
+/// Who an item is assigned to, shown on list rows: a small initial avatar per
+/// member ("J", "S") in that member's color, so it reads without relying on
+/// color alone. Everyone gets the two-person glyph in Everyone purple. Shows up
+/// to three avatars, then "+N".
+struct AssigneeBadges: View {
+    @EnvironmentObject private var appSettings: AppSettings
+    let indices: [Int]
+    @ScaledMetric(relativeTo: .caption2) private var size: CGFloat = 20
+
+    var body: some View {
+        let sorted = indices.sorted()
+        HStack(spacing: 3) {
+            if sorted.isEmpty {
+                avatar(color: .purple) {
+                    Image(systemName: "person.2.fill").font(.caption2)
+                }
+            } else {
+                ForEach(sorted.prefix(3), id: \.self) { idx in
+                    avatar(color: appSettings.memberColor(at: idx)) {
+                        Text(appSettings.memberInitials(at: idx))
+                            .font(.caption2.weight(.bold))
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
+                    }
+                }
+                if sorted.count > 3 {
+                    Text("+\(sorted.count - 3)").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(sorted.isEmpty
+            ? "Everyone"
+            : sorted.map { appSettings.memberName(at: $0) }.joined(separator: " and "))
+    }
+
+    /// Twelve Percent Rule: a soft wash of the member's color with the
+    /// full-strength color on the letter.
+    private func avatar<Content: View>(color: Color, @ViewBuilder content: () -> Content) -> some View {
+        content()
+            .foregroundStyle(color)
+            .frame(width: size, height: size)
+            .background(color.opacity(0.15), in: Circle())
+    }
+}
+
 // ── AppIconLabel ──────────────────────────────────────────────────────────────
 
 /// Drop-in replacement for Label(title, systemImage:) that supports emoji icons.
