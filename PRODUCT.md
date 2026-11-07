@@ -26,7 +26,7 @@ Everything household-shaped in one app, with the pieces linked rather than siloe
 
 ## Capabilities and Constraints
 - Native SwiftUI app; data in Firebase/Firestore, shared per household and synced live between phones.
-- Seven tabs (Chores, Shopping, Meals, Garden, Packing, Looking For, Settings); tab order is configurable per device, so iOS shows the first four and puts the rest under More.
+- Seven tabs (Chores, Shopping, Meals, Garden, Packing, Looking For, Settings); tab order is configurable per device, and the scrolling bottom bar shows five at a time with arrows to reach the rest.
 - Currently sideloaded on a free Apple developer account (7-day signing). No App Store distribution yet, no paid capabilities (no push notifications, no image storage).
 - In daily use: changes must never wipe or orphan household data, and older builds on the other phone must keep working.
 - Must run on an iPhone 12 Pro, so no Apple Intelligence-dependent features.

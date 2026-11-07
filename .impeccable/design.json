@@ -328,6 +328,14 @@
       "description": "Shown for 5s after a single-item delete, just above the tab bar: message plus an Undo text button on a system material. No shadow.",
       "html": "<div class=\"ds-undo\"><span>Deleted \"Milk\"</span><button>Undo</button></div>",
       "css": ".ds-undo{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:0 16px;margin:0 16px;border-radius:12px;background:rgba(242,242,247,.85);backdrop-filter:blur(20px);font:400 15px -apple-system,system-ui}.ds-undo button{background:none;border:0;color:#45A86D;font:600 15px -apple-system,system-ui}"
+    },
+    {
+      "name": "Scrolling Bottom Bar",
+      "kind": "custom",
+      "refersTo": "scrolling-bottom-bar",
+      "description": "Five tabs visible in a system-material bar, swipeable and snapping to whole tabs, with tint chevrons at either end when more tabs lie that way. Selected tab is tint, others secondary.",
+      "html": "<nav class=\"ds-bar\"><span class=\"ds-tab ds-tab-on\">Chores</span><span class=\"ds-tab\">Shopping</span><span class=\"ds-tab\">Meals</span><span class=\"ds-tab\">Garden</span><span class=\"ds-tab\">Packing</span><span class=\"ds-chev\">&#x203A;</span></nav>",
+      "css": ".ds-bar{display:flex;align-items:center;height:50px;padding-left:28px;background:rgba(249,249,249,.94);border-top:1px solid rgba(60,60,67,.29);font:400 11px -apple-system,system-ui}.ds-tab{flex:1;text-align:center;color:rgba(60,60,67,.6)}.ds-tab-on{color:#45A86D}.ds-chev{width:28px;text-align:center;color:#45A86D;font-size:20px;font-weight:600}"
     }
   ],
   "narrative": {
