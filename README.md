@@ -92,7 +92,7 @@ HouseholdApp/
     │   └── NotificationManager.swift   ← Local due-date reminders (UNUserNotificationCenter)
     │
     └── Views/
-        ├── RootView.swift              ← TabView: Chores | Shopping | Meals | Garden | Packing | Looking For | Settings (order configurable) (+ TabRouter for cross-tab links)
+        ├── RootView.swift              ← Scrolling bottom bar: Chores | Shopping | Meals | Garden | Packing | Looking For | Settings (order configurable) (+ TabRouter for cross-tab links)
         ├── Auth/                       ← Sign-in and household setup screens
         ├── ChoreList/ + ChoreForm/     ← Chore list, rows, add/edit sheet
         ├── Categories/                 ← Category grid and add/edit form
