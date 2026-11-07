@@ -22,6 +22,7 @@ struct HouseholdAppApp: App {
 
     init() {
         FirebaseApp.configure()
+        NotifCategory.registerDefaults()
     }
 
     var body: some Scene {
@@ -67,11 +68,38 @@ struct HouseholdAppApp: App {
                 .onChange(of: appSettings.memberNamesRaw) { _, _ in
                     householdCtrl.saveMemberNames(appSettings.members)
                 }
+                .onChange(of: householdCtrl.household) { _, _ in syncMyAccount() }
+                .onChange(of: appSettings.myMemberIndex) { _, _ in publishMyAccount() }
         }
+    }
+
+    /// Keeps this phone's "I am" and the household's record of it in step.
+    /// The household's copy wins when it holds a link, since another phone
+    /// may have shifted it by removing a member; a link cleared there (that
+    /// member was removed) clears it here too. Then this phone's entry
+    /// (email + link) is written if it changed.
+    private func syncMyAccount() {
+        guard let household = householdCtrl.household, let uid = auth.uid else { return }
+        if let remote = household.accounts?[uid] {
+            if let index = remote.memberIndex, index < appSettings.members.count {
+                if !appSettings.hasChosenMember || index != appSettings.myMemberIndex {
+                    appSettings.myMemberIndex = index
+                }
+            } else if remote.memberIndex == nil, appSettings.hasChosenMember {
+                appSettings.clearMyMember()
+            }
+        }
+        publishMyAccount()
+    }
+
+    private func publishMyAccount() {
+        let chosen = appSettings.hasChosenMember && appSettings.myMemberIndex < appSettings.members.count
+        householdCtrl.publishMyAccount(memberIndex: chosen ? appSettings.myMemberIndex : nil)
     }
 
     private func onRootAppear() {
         appSettings.migrateFromOldFormat()
+        syncMyAccount()
         if let hid = householdCtrl.household?.id {
             startStores(householdId: hid)
         }

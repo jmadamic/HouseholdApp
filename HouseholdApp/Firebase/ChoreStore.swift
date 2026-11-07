@@ -33,7 +33,7 @@ final class ChoreStore: ObservableObject {
                     self.chores = (snapshot?.documents ?? []).compactMap {
                         try? $0.data(as: ChoreDoc.self)
                     }.sorted { ($0.sortOrder, $0.createdAt) < ($1.sortOrder, $1.createdAt) }
-                    NotificationManager.shared.rescheduleAll(self.chores)
+                    NotificationManager.shared.update(chores: self.chores)
                     if !self.hasCleanedUp {
                         self.hasCleanedUp = true
                         self.cleanupOldCompleted(householdId: householdId)
@@ -50,13 +50,11 @@ final class ChoreStore: ObservableObject {
             .collection("chores").document(chore.id)
         do { try ref.setData(from: chore) }
         catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
-        NotificationManager.shared.schedule(chore)   // immediate local update before snapshot arrives
     }
 
     func delete(_ chore: ChoreDoc, householdId: String) {
         db.collection("households").document(householdId)
             .collection("chores").document(chore.id).delete()
-        NotificationManager.shared.cancel(choreId: chore.id)
     }
 
     func markComplete(_ chore: ChoreDoc, byMemberIndex memberIndex: Int, householdId: String) {

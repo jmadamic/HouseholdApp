@@ -37,6 +37,7 @@ final class MealStore: ObservableObject {
                         if $0.day != $1.day { return $0.day < $1.day }
                         return $0.mealTypeEnum.sortOrder < $1.mealTypeEnum.sortOrder
                     }
+                    NotificationManager.shared.update(meals: self.meals)
                     if !self.hasCleanedUp {
                         self.hasCleanedUp = true
                         self.cleanupOldMeals(householdId: householdId)

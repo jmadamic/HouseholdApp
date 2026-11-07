@@ -35,6 +35,7 @@ final class TripStore: ObservableObject {
                     self.trips = (snapshot?.documents ?? []).compactMap {
                         try? $0.data(as: TripDoc.self)
                     }.sorted { $0.startDate < $1.startDate }
+                    NotificationManager.shared.update(trips: self.trips)
                     if !self.hasCleanedUp {
                         self.hasCleanedUp = true
                         self.cleanupOldTrips(householdId: householdId)

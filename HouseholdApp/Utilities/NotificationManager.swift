@@ -1,19 +1,46 @@
 // NotificationManager.swift
-// Schedules and cancels local due-date reminders for chores and for
-// shopping items that have a "need by" date.
+// Local reminders for everything in the app with a date: chore due dates,
+// shopping need-by dates, garden harvests, trip starts and planned meals.
 //
-// Notification IDs follow the pattern:  hh-{kind}-{docId}-{index}
-//   kind  = "chore" or "shop"
-//   index 0 = day-of / period-start reminder
-//   index 1 = day-before reminder (specificDate only)
+// Each store hands over its latest snapshot (update(chores:) etc.), and the
+// whole set of reminders is rebuilt in one pass, shortly after the last
+// change. One pass lets it keep the soonest reminders when there are more
+// than iOS will hold: it keeps only the 64 soonest pending local
+// notifications per app and silently drops the rest.
 //
-// Bulk rescheduling is scoped BY PREFIX so rebuilding chore reminders never
-// clears shopping ones (and vice versa).
-//
-// All methods are @MainActor-safe and may be called freely from the stores.
+// What fires, and when, is device-local (NotifCategory's UserDefaults keys),
+// so each phone chooses its own. Identifiers start with "hh-"; a rebuild
+// replaces every pending request with that prefix.
 
 import Foundation
 import UserNotifications
+
+/// The device's reminder settings, read fresh for each rebuild.
+private struct NotifPrefs {
+    private let d = UserDefaults.standard
+    let timeMinutes: Int
+    let filter: NotifChoreFilter
+    let me: Int
+
+    init() {
+        timeMinutes = d.integer(forKey: NotifCategory.timeKey)
+        filter = NotifChoreFilter(rawValue: d.string(forKey: "notifChoreFilter") ?? "") ?? .all
+        me = d.integer(forKey: "myMemberIndex")
+    }
+
+    func isOn(_ c: NotifCategory) -> Bool  { d.bool(forKey: c.onKey) }
+    func dayOf(_ c: NotifCategory) -> Bool { d.bool(forKey: c.dayOfKey) }
+    func ahead(_ c: NotifCategory) -> Int  { d.integer(forKey: c.aheadKey) }
+
+    /// "Remind me about": empty assignees means everyone.
+    func includes(_ assignees: [Int]) -> Bool {
+        switch filter {
+        case .all:    return true
+        case .mine:   return assignees.isEmpty || assignees.contains(me)
+        case .shared: return assignees.isEmpty
+        }
+    }
+}
 
 @MainActor
 final class NotificationManager {
@@ -22,8 +49,19 @@ final class NotificationManager {
     private init() {}
 
     private let center = UNUserNotificationCenter.current()
-    private let idPrefix     = "hh-chore-"
-    private let shopIdPrefix = "hh-shop-"
+    private let idPrefix = "hh-"
+    /// Under iOS's 64, with some headroom.
+    private let maxPending = 60
+
+    private var chores:   [ChoreDoc] = []
+    private var shopping: [ShoppingItemDoc] = []
+    private var plants:   [GardenPlantDoc] = []
+    private var trips:    [TripDoc] = []
+    private var packing:  [PackingItemDoc] = []
+    private var meals:    [MealDoc] = []
+
+    /// Bumped by each change; a rebuild that's been overtaken stops.
+    private var generation = 0
 
     // MARK: - Permission
 
@@ -34,225 +72,184 @@ final class NotificationManager {
         _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
     }
 
-    // MARK: - Bulk reschedule (after remote sync)
-
-    /// Removes every pending household notification and rebuilds from the current chore list.
-    /// Call this after a Firestore snapshot so remote changes (e.g. wife completing a chore)
-    /// are reflected in the local notification queue.
-    func rescheduleAll(_ chores: [ChoreDoc]) {
-        // Scoped to chore IDs so shopping reminders survive.
-        removePending(withPrefix: idPrefix)
-        for chore in chores where !chore.isCompleted {
-            addRequests(for: chore)
-        }
+    func authorizationStatus() async -> UNAuthorizationStatus {
+        await center.notificationSettings().authorizationStatus
     }
 
-    /// Same as rescheduleAll(_:) but for shopping items with a need-by date.
-    func rescheduleAllShopping(_ items: [ShoppingItemDoc]) {
-        removePending(withPrefix: shopIdPrefix)
-        for item in items where !item.isPurchased {
-            addRequests(forItem: item)
-        }
-    }
+    // MARK: - Inputs (called from each store's snapshot listener)
 
-    /// Removes every pending request whose identifier starts with `prefix`.
-    private func removePending(withPrefix prefix: String) {
-        center.getPendingNotificationRequests { requests in
-            let ids = requests.map(\.identifier).filter { $0.hasPrefix(prefix) }
-            guard !ids.isEmpty else { return }
-            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
-        }
-    }
+    func update(chores: [ChoreDoc])          { self.chores = chores;   setNeedsRebuild() }
+    func update(shopping: [ShoppingItemDoc]) { self.shopping = shopping; setNeedsRebuild() }
+    func update(plants: [GardenPlantDoc])    { self.plants = plants;   setNeedsRebuild() }
+    func update(trips: [TripDoc])            { self.trips = trips;     setNeedsRebuild() }
+    func update(packing: [PackingItemDoc])   { self.packing = packing; setNeedsRebuild() }
+    func update(meals: [MealDoc])            { self.meals = meals;     setNeedsRebuild() }
 
-    // MARK: - Individual schedule / cancel
-
-    /// Schedules (or replaces) the notifications for one chore.
-    /// Safe to call after every save — it cancels old entries before adding new ones.
-    func schedule(_ chore: ChoreDoc) {
-        cancel(choreId: chore.id)
-        guard !chore.isCompleted else { return }
-        addRequests(for: chore)
-    }
-
-    /// Removes all pending notifications for a single chore.
-    func cancel(choreId: String) {
-        center.removePendingNotificationRequests(withIdentifiers: pendingIds(for: choreId))
-    }
-
-    /// Schedules (or replaces) the need-by reminders for one shopping item.
-    func schedule(item: ShoppingItemDoc) {
-        cancel(shoppingItemId: item.id)
-        guard !item.isPurchased else { return }
-        addRequests(forItem: item)
-    }
-
-    /// Removes all pending notifications for a single shopping item.
-    func cancel(shoppingItemId: String) {
-        center.removePendingNotificationRequests(
-            withIdentifiers: (0..<2).map { "\(shopIdPrefix)\(shoppingItemId)-\($0)" })
-    }
-
-    // MARK: - Private
-
-    private func pendingIds(for choreId: String) -> [String] {
-        (0..<2).map { "\(idPrefix)\(choreId)-\($0)" }
-    }
-
-    // MARK: - UserDefaults preference readers (device-local, same keys as AppSettings @AppStorage)
-
-    private var prefDueDatesEnabled: Bool {
-        UserDefaults.standard.object(forKey: "notifDueDatesEnabled") as? Bool ?? true
-    }
-    private var prefChoreFilter: NotifChoreFilter {
-        let raw = UserDefaults.standard.string(forKey: "notifChoreFilter") ?? "all"
-        return NotifChoreFilter(rawValue: raw) ?? .all
-    }
-    private var prefMyMemberIndex: Int {
-        UserDefaults.standard.integer(forKey: "myMemberIndex")
-    }
-    private var prefDayOf: Bool {
-        UserDefaults.standard.object(forKey: "notifDayOf") as? Bool ?? true
-    }
-    private var prefDayBefore: Bool {
-        UserDefaults.standard.object(forKey: "notifDayBefore") as? Bool ?? true
-    }
-
-    private func addRequests(for chore: ChoreDoc) {
-        // ── Respect user preferences ──────────────────────────────────────────
-        guard prefDueDatesEnabled else { return }
-
-        switch prefChoreFilter {
-        case .mine:
-            // Skip chores assigned to specific people that don't include me
-            if !chore.assignedToMembers.isEmpty && !chore.assignedToMembers.contains(prefMyMemberIndex) {
-                return
+    /// Rebuilds every reminder shortly after the last call. Call after a
+    /// settings change too.
+    func setNeedsRebuild() {
+        generation += 1
+        let gen = generation
+        Task {
+            // At launch every store snapshots at once; wait for them to settle.
+            try? await Task.sleep(for: .milliseconds(400))
+            guard gen == generation else { return }
+            let requests = buildRequests()
+            let pending = await center.pendingNotificationRequests()
+            guard gen == generation else { return }
+            let old = pending.map(\.identifier).filter { $0.hasPrefix(idPrefix) }
+            center.removePendingNotificationRequests(withIdentifiers: old)
+            #if DEBUG
+            print("[Notifications] Scheduled \(requests.count):",
+                  requests.map { "\($0.identifier) \($0.content.title) — \($0.content.body)" })
+            #endif
+            for request in requests {
+                let id = request.identifier
+                center.add(request) { error in
+                    if let error { print("[Notifications] Failed to add \(id): \(error)") }
+                }
             }
-        case .shared:
-            // Skip chores that are assigned to specific people (not "everyone")
-            if !chore.assignedToMembers.isEmpty { return }
-        case .all:
-            break
+        }
+    }
+
+    // MARK: - Building
+
+    private struct Entry {
+        let id: String
+        let date: Date
+        let title: String
+        let body: String
+        let category: NotifCategory
+    }
+
+    private func buildRequests() -> [UNNotificationRequest] {
+        let prefs = NotifPrefs()
+        var entries: [Entry] = []
+
+        if prefs.isOn(.chores) {
+            for chore in chores where !chore.isCompleted && prefs.includes(chore.assignedToMembers) {
+                entries += choreEntries(chore, prefs)
+            }
+        }
+        if prefs.isOn(.shopping) {
+            for item in shopping where !item.isPurchased && prefs.includes(item.assignedToMembers) {
+                guard let due = item.needByDate else { continue }
+                let timed = item.hasNeedByTime == true
+                let time = timed ? " by \(due.formatted(date: .omitted, time: .shortened))" : ""
+                entries += dated(.shopping, id: item.id, title: item.nameSafe, date: due,
+                                 timed: timed, prefs) { "Needed \(Self.when($0))\(time)" }
+            }
+        }
+        if prefs.isOn(.garden) {
+            for plant in plants where !plant.isFullyHarvested {
+                for harvest in plant.pendingHarvests {
+                    let amount = harvest.amount.flatMap { $0.isEmpty ? nil : $0 }
+                    entries += dated(.garden, id: "\(plant.id)-\(harvest.id)", title: plant.nameSafe,
+                                     date: harvest.expectedDate, timed: false, prefs) { days in
+                        if let amount { return "\(amount) ready to pick \(Self.when(days))" }
+                        return "Ready to harvest \(Self.when(days))"
+                    }
+                }
+            }
+        }
+        if prefs.isOn(.trips) {
+            for trip in trips where !trip.archived {
+                let items = packing.filter { $0.tripId == trip.id }
+                let left = items.filter { !$0.isPacked }.count
+                let packed = items.isEmpty ? ""
+                    : left == 0 ? " · All packed"
+                    : " · \(left) \(left == 1 ? "item" : "items") left to pack"
+                entries += dated(.trips, id: trip.id, title: trip.nameSafe, date: trip.startDate,
+                                 timed: false, prefs) { "Starts \(Self.when($0))\(packed)" }
+            }
+        }
+        if prefs.isOn(.meals) {
+            for meal in meals where !meal.archived && prefs.includes(meal.assignedToMembers) {
+                let type = meal.mealTypeEnum.label
+                let title = meal.name?.isEmpty == false ? "\(type): \(meal.displayName)" : type
+                let missing = meal.missingIngredients.count
+                let need = missing == 0 ? ""
+                    : " · \(missing) \(missing == 1 ? "ingredient" : "ingredients") needed"
+                entries += dated(.meals, id: meal.id, title: title, date: meal.day,
+                                 timed: false, prefs) { "On the menu \(Self.when($0))\(need)" }
+            }
         }
 
-        let wantDayOf     = prefDayOf
-        let wantDayBefore = prefDayBefore
-        guard wantDayOf || wantDayBefore else { return }
+        let now = Date()
+        let soonest = entries.filter { $0.date > now }
+            .sorted { $0.date < $1.date }
+            .prefix(maxPending)
 
-        // ── Build fire-date entries ────────────────────────────────────────────
         let cal = Calendar.current
-        let now  = Date()
+        return soonest.map { entry in
+            let content = UNMutableNotificationContent()
+            content.title = entry.title
+            content.body = entry.body
+            content.sound = .default
+            content.userInfo = ["category": entry.category.rawValue]
+            let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: entry.date)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+            return UNNotificationRequest(identifier: entry.id, content: content, trigger: trigger)
+        }
+    }
 
-        var entries: [(date: Date, body: String, idx: Int)] = []
-
+    private func choreEntries(_ chore: ChoreDoc, _ prefs: NotifPrefs) -> [Entry] {
+        let cal = Calendar.current
         switch chore.dueDateTypeEnum {
-
         case .specificDate:
-            guard let due = chore.dueDate else { return }
-            // Chores with an explicit due time fire AT that time; otherwise 9am.
+            guard let due = chore.dueDate else { return [] }
             let timed = chore.hasDueTime == true
-            let timeLabel = timed ? " at \(due.formatted(date: .omitted, time: .shortened))" : ""
-            if wantDayOf,
-               let dayOf = timed ? due : cal.date(bySettingHour: 9, minute: 0, second: 0, of: due),
-               dayOf > now {
-                entries.append((dayOf, "Due today\(timeLabel)", 0))
-            }
-            if wantDayBefore,
-               let prev = cal.date(byAdding: .day, value: -1, to: due),
-               let eve  = timed ? prev : cal.date(bySettingHour: 9, minute: 0, second: 0, of: prev),
-               eve > now {
-                entries.append((eve, "Due tomorrow\(timeLabel)", 1))
-            }
+            let time = timed ? " at \(due.formatted(date: .omitted, time: .shortened))" : ""
+            return dated(.chores, id: chore.id, title: chore.titleSafe, date: due,
+                         timed: timed, prefs) { "Due \(Self.when($0))\(time)" }
 
-        case .week:
-            guard wantDayOf,
-                  let due   = chore.dueDate,
-                  let start = cal.dateInterval(of: .weekOfYear, for: due)?.start,
-                  let fire  = cal.date(bySettingHour: 9, minute: 0, second: 0, of: start),
-                  fire > now
-            else { return }
-            entries.append((fire, "Due this week", 0))
-
-        case .month:
-            guard wantDayOf,
-                  let due   = chore.dueDate,
-                  let start = cal.dateInterval(of: .month, for: due)?.start,
-                  let fire  = cal.date(bySettingHour: 9, minute: 0, second: 0, of: start),
-                  fire > now
-            else { return }
-            entries.append((fire, "Due this month", 0))
+        case .week, .month:
+            // One reminder when the period starts.
+            guard prefs.dayOf(.chores), let due = chore.dueDate else { return [] }
+            let isWeek = chore.dueDateTypeEnum == .week
+            guard let start = cal.dateInterval(of: isWeek ? .weekOfYear : .month, for: due)?.start,
+                  let fire = fireDate(start, daysBefore: 0, timed: false, prefs)
+            else { return [] }
+            return [Entry(id: "\(idPrefix)chores-\(chore.id)-0", date: fire, title: chore.titleSafe,
+                          body: isWeek ? "Due this week" : "Due this month", category: .chores)]
 
         case .none:
-            return
-        }
-
-        for entry in entries {
-            let content        = UNMutableNotificationContent()
-            content.title      = chore.titleSafe
-            content.body       = entry.body
-            content.sound      = .default
-            content.userInfo   = ["choreId": chore.id]
-
-            let comps   = cal.dateComponents([.year, .month, .day, .hour, .minute], from: entry.date)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
-            let id      = "\(idPrefix)\(chore.id)-\(entry.idx)"
-            let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
-
-            center.add(request) { if let error = $0 { print("[Notifications] Failed to add \(id): \(error)") } }
+            return []
         }
     }
 
-    // MARK: - Shopping need-by reminders
-
-    /// Builds the reminders for a shopping item's need-by date, honoring the
-    /// same device preferences as chores (enabled, who it's for, day-of /
-    /// day-before). Reminders go to whoever the item is assigned to.
-    private func addRequests(forItem item: ShoppingItemDoc) {
-        guard prefDueDatesEnabled else { return }
-        guard let due = item.needByDate else { return }
-
-        switch prefChoreFilter {
-        case .mine:
-            // Skip items assigned to specific people that don't include me.
-            if !item.assignedToMembers.isEmpty
-                && !item.assignedToMembers.contains(prefMyMemberIndex) { return }
-        case .shared:
-            // Skip items assigned to specific people (not "everyone").
-            if !item.assignedToMembers.isEmpty { return }
-        case .all:
-            break
+    /// The day-of and early reminders for one dated thing. `body` gets the
+    /// number of days before (0 = on the day).
+    private func dated(_ category: NotifCategory, id: String, title: String, date: Date,
+                       timed: Bool, _ prefs: NotifPrefs, body: (Int) -> String) -> [Entry] {
+        var out: [Entry] = []
+        let base = "\(idPrefix)\(category.rawValue)-\(id)"
+        if prefs.dayOf(category),
+           let fire = fireDate(date, daysBefore: 0, timed: timed, prefs) {
+            out.append(Entry(id: "\(base)-0", date: fire, title: title, body: body(0), category: category))
         }
+        let ahead = prefs.ahead(category)
+        if ahead > 0, let fire = fireDate(date, daysBefore: ahead, timed: timed, prefs) {
+            out.append(Entry(id: "\(base)-ahead", date: fire, title: title, body: body(ahead), category: category))
+        }
+        return out
+    }
 
+    /// Timed things remind at their own time; the rest at the chosen reminder time.
+    private func fireDate(_ date: Date, daysBefore: Int, timed: Bool, _ prefs: NotifPrefs) -> Date? {
         let cal = Calendar.current
-        let now = Date()
-        // With an explicit time, fire at it; otherwise 9am like chores.
-        let timed = item.hasNeedByTime == true
-        let timeLabel = timed ? " by \(due.formatted(date: .omitted, time: .shortened))" : ""
+        guard let day = cal.date(byAdding: .day, value: -daysBefore, to: date) else { return nil }
+        if timed { return day }
+        return cal.date(bySettingHour: prefs.timeMinutes / 60, minute: prefs.timeMinutes % 60,
+                        second: 0, of: day)
+    }
 
-        var entries: [(date: Date, body: String, idx: Int)] = []
-        if prefDayOf,
-           let dayOf = timed ? due : cal.date(bySettingHour: 9, minute: 0, second: 0, of: due),
-           dayOf > now {
-            entries.append((dayOf, "Needed today\(timeLabel)", 0))
-        }
-        if prefDayBefore,
-           let prev = cal.date(byAdding: .day, value: -1, to: due),
-           let eve  = timed ? prev : cal.date(bySettingHour: 9, minute: 0, second: 0, of: prev),
-           eve > now {
-            entries.append((eve, "Needed tomorrow\(timeLabel)", 1))
-        }
-
-        for entry in entries {
-            let content      = UNMutableNotificationContent()
-            content.title    = item.nameSafe
-            content.body     = entry.body
-            content.sound    = .default
-            content.userInfo = ["shoppingItemId": item.id]
-
-            let comps   = cal.dateComponents([.year, .month, .day, .hour, .minute], from: entry.date)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
-            let id      = "\(shopIdPrefix)\(item.id)-\(entry.idx)"
-            let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
-            center.add(request) { if let error = $0 { print("[Notifications] Failed to add \(id): \(error)") } }
+    private static func when(_ days: Int) -> String {
+        switch days {
+        case 0:  return "today"
+        case 1:  return "tomorrow"
+        case 7:  return "in a week"
+        default: return "in \(days) days"
         }
     }
 }

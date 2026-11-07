@@ -28,6 +28,7 @@ final class PackingStore: ObservableObject {
                     self.items = (snapshot?.documents ?? []).compactMap {
                         try? $0.data(as: PackingItemDoc.self)
                     }.sorted { ($0.section, $0.createdAt) < ($1.section, $1.createdAt) }
+                    NotificationManager.shared.update(packing: self.items)
                 }
             }
     }
