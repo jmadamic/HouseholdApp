@@ -28,6 +28,18 @@ struct HouseholdDoc: Identifiable, Codable, Hashable {
 
     /// Shared member display names. Stored in Firestore so all devices stay in sync.
     var memberNames: [String]?
+
+    /// Signed-in accounts keyed by UID: each phone writes its own email and
+    /// which member it is ("I am"), so Settings can show the email beside
+    /// each member. Optional for backward compat; other users' emails can't
+    /// be looked up from the client any other way.
+    var accounts: [String: HouseholdAccount]? = nil
+}
+
+struct HouseholdAccount: Codable, Hashable {
+    var email: String?
+    /// Index into memberNames; nil until that phone picks "I am".
+    var memberIndex: Int?
 }
 
 /// A /invites/{code} document maps a short invite code → household ID so that

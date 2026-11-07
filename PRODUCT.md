@@ -22,7 +22,7 @@ Everything household-shaped in one app, with the pieces linked rather than siloe
 - Each item can be assigned to a person or to Everyone; filter bars show "All" plus one tab per member.
 - Voice entry ("add task due tomorrow to clean bathroom") prefills a form for confirmation.
 - Meal plans can be drafted in Excel or Google Sheets from a bundled template and imported.
-- Local reminders only (no push between devices).
+- Local reminders only (no push between devices): chores, shopping need-by dates, garden harvests, trips and meals, each customizable per phone.
 
 ## Capabilities and Constraints
 - Native SwiftUI app; data in Firebase/Firestore, shared per household and synced live between phones.

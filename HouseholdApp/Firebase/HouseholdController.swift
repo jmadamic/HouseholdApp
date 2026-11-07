@@ -234,6 +234,35 @@ final class HouseholdController: ObservableObject {
         }
     }
 
+    // ── Account ↔ member links ────────────────────────────────────────────────
+
+    /// Writes this phone's own entry in `accounts` (email + "I am" member)
+    /// if it differs from what's stored. Only ever touches the caller's UID.
+    func publishMyAccount(memberIndex: Int?) {
+        guard let id = currentHouseholdId, let household,
+              let user = Auth.auth().currentUser else { return }
+        let mine = HouseholdAccount(email: user.email, memberIndex: memberIndex)
+        guard household.accounts?[user.uid] != mine else { return }
+        let key = "accounts.\(user.uid)"
+        db.collection("households").document(id).updateData([
+            "\(key).email":       user.email.map { $0 as Any } ?? FieldValue.delete(),
+            "\(key).memberIndex": memberIndex.map { $0 as Any } ?? FieldValue.delete(),
+        ])
+    }
+
+    /// After member `removed` is deleted, shifts every account's link to
+    /// match the new member positions (the removed member's link is cleared).
+    func remapAccounts(afterRemovingMember removed: Int) {
+        guard let id = currentHouseholdId, let accounts = household?.accounts else { return }
+        var updates: [String: Any] = [:]
+        for (uid, account) in accounts {
+            guard let index = account.memberIndex, index >= removed else { continue }
+            updates["accounts.\(uid).memberIndex"] = index == removed ? FieldValue.delete() : index - 1
+        }
+        guard !updates.isEmpty else { return }
+        db.collection("households").document(id).updateData(updates)
+    }
+
     // ── Rotate invite code (optional future feature) ──────────────────────────
     func rotateInviteCode() async {
         guard let id = currentHouseholdId,

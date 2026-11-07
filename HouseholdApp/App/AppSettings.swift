@@ -19,12 +19,111 @@ enum NotifChoreFilter: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Applies to chores, shopping items and meals (the things with assignees).
     var label: String {
         switch self {
-        case .all:    return "All chores"
-        case .mine:   return "My chores"
-        case .shared: return "Shared (everyone)"
+        case .all:    return "Everyone's"
+        case .mine:   return "Mine and shared"
+        case .shared: return "Shared only"
         }
+    }
+}
+
+/// Each kind of dated thing the app can remind about. Settings are
+/// device-local UserDefaults keys, so each phone chooses its own.
+enum NotifCategory: String, CaseIterable, Identifiable {
+    case chores, shopping, garden, trips, meals
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .chores:   return "Chores"
+        case .shopping: return "Shopping"
+        case .garden:   return "Garden Harvests"
+        case .trips:    return "Trips"
+        case .meals:    return "Meals"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .chores:   return AppTab.chores.icon
+        case .shopping: return AppTab.shopping.icon
+        case .garden:   return AppTab.garden.icon
+        case .trips:    return AppTab.packing.icon
+        case .meals:    return AppTab.meals.icon
+        }
+    }
+
+    var dayOfLabel: String {
+        switch self {
+        case .chores:   return "On the due day"
+        case .shopping: return "On the need-by day"
+        case .garden:   return "On the ready day"
+        case .trips:    return "On the day it starts"
+        case .meals:    return "On the day"
+        }
+    }
+
+    var footer: String {
+        switch self {
+        case .chores:   return "Chores with a set time remind at that time. Week and month chores remind once, at the start of their week or month."
+        case .shopping: return "For items with a need-by date. Items with a set time remind at that time."
+        case .garden:   return "For each expected harvest."
+        case .trips:    return "Includes how many items are still left to pack."
+        case .meals:    return "Includes how many ingredients you still need."
+        }
+    }
+
+    /// Whether "Remind me about" (everyone's / mine / shared) applies.
+    var usesAssignees: Bool { self == .chores || self == .shopping || self == .meals }
+
+    var onKey:    String { "notif.\(rawValue).on" }
+    var dayOfKey: String { "notif.\(rawValue).dayOf" }
+    /// Days ahead for the early reminder; 0 = none.
+    var aheadKey: String { "notif.\(rawValue).ahead" }
+
+    /// Choices for the early reminder.
+    static let aheadOptions = [0, 1, 2, 3, 7]
+
+    static func aheadLabel(_ days: Int) -> String {
+        switch days {
+        case 0:  return "None"
+        case 1:  return "1 day before"
+        case 7:  return "1 week before"
+        default: return "\(days) days before"
+        }
+    }
+
+    /// Minutes after midnight that untimed reminders fire.
+    static let timeKey = "notifTimeMinutes"
+
+    /// Registers defaults for every reminder setting. Call at launch, before
+    /// anything reads them. Chores and shopping inherit the single set of
+    /// switches that came before (master on/off, day of, day before), so an
+    /// update doesn't change what either phone already gets. Registered
+    /// defaults aren't saved, so this is safe to run every launch.
+    static func registerDefaults() {
+        let d = UserDefaults.standard
+        let wasOn     = d.object(forKey: "notifDueDatesEnabled") as? Bool ?? true
+        let dayOf     = d.object(forKey: "notifDayOf") as? Bool ?? true
+        let dayBefore = d.object(forKey: "notifDayBefore") as? Bool ?? true
+
+        var defaults: [String: Any] = [timeKey: 9 * 60]
+        for c in allCases {
+            let (on, onDay, ahead): (Bool, Bool, Int)
+            switch c {
+            case .chores, .shopping: (on, onDay, ahead) = (wasOn, dayOf, dayBefore ? 1 : 0)
+            case .garden:            (on, onDay, ahead) = (wasOn, true, 0)
+            case .trips:             (on, onDay, ahead) = (wasOn, false, 1)
+            case .meals:             (on, onDay, ahead) = (false, true, 0)
+            }
+            defaults[c.onKey] = on
+            defaults[c.dayOfKey] = onDay
+            defaults[c.aheadKey] = ahead
+        }
+        d.register(defaults: defaults)
     }
 }
 
@@ -59,10 +158,9 @@ class AppSettings: ObservableObject {
     // ── Notification preferences ─────────────────────────────────────────────
     // All stored in UserDefaults (device-local) so each phone configures independently.
 
-    @AppStorage("notifDueDatesEnabled")
-    var notifDueDatesEnabled: Bool = true {
-        willSet { objectWillChange.send() }
-    }
+    // Per-kind reminder settings (on / day of / days ahead) and the reminder
+    // time live under NotifCategory's keys, read directly with @AppStorage by
+    // NotificationSettingsView and with UserDefaults by NotificationManager.
 
     @AppStorage("notifChoreFilter")
     private var notifChoreFilterRaw: String = NotifChoreFilter.all.rawValue {
@@ -79,26 +177,17 @@ class AppSettings: ObservableObject {
         willSet { objectWillChange.send() }
     }
 
-    @AppStorage("notifDayOf")
-    var notifDayOf: Bool = true {
-        willSet { objectWillChange.send() }
+    /// False until this phone picks "I am" (the key is only written then).
+    var hasChosenMember: Bool {
+        UserDefaults.standard.object(forKey: "myMemberIndex") != nil
     }
 
-    @AppStorage("notifDayBefore")
-    var notifDayBefore: Bool = true {
-        willSet { objectWillChange.send() }
+    /// Back to "not set", e.g. after that member is removed.
+    func clearMyMember() {
+        objectWillChange.send()
+        UserDefaults.standard.removeObject(forKey: "myMemberIndex")
     }
 
-    /// A hash of all notification preferences; observe this to reschedule when any pref changes.
-    var notifSettingsHash: Int {
-        var h = Hasher()
-        h.combine(notifDueDatesEnabled)
-        h.combine(notifChoreFilterRaw)
-        h.combine(myMemberIndex)
-        h.combine(notifDayOf)
-        h.combine(notifDayBefore)
-        return h.finalize()
-    }
 
     // ── Tab order (device-local) ──────────────────────────────────────────────
     // Comma-separated AppTab raw values. Unknown values are dropped and any

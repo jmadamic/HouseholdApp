@@ -39,10 +39,18 @@ struct SettingsView: View {
                     Button { newMemberName = ""; showingAddMember = true } label: {
                         Label("Add Member", systemImage: "person.badge.plus")
                     }
+                    Picker("I am", selection: myMemberBinding) {
+                        if !appSettings.hasChosenMember {
+                            Text("Not set").tag(Int?.none)
+                        }
+                        ForEach(Array(appSettings.members.indices), id: \.self) { i in
+                            Text(appSettings.memberName(at: i)).tag(Int?.some(i))
+                        }
+                    }
                 } header: {
                     Text("Household Members")
                 } footer: {
-                    Text("Names appear in assignment pickers and sync across all devices in your household.")
+                    Text(membersFooter)
                 }
 
                 // ── Household Sharing ──────────────────────────────────────────
@@ -106,8 +114,13 @@ struct SettingsView: View {
                     }
                 }
 
-                // ── Bottom bar order ───────────────────────────────────────────
+                // ── Notifications + bottom bar order ───────────────────────────
                 Section {
+                    NavigationLink {
+                        NotificationSettingsView()
+                    } label: {
+                        Label("Notifications", systemImage: "bell.badge")
+                    }
                     NavigationLink {
                         BottomBarOrderView()
                     } label: {
@@ -149,38 +162,6 @@ struct SettingsView: View {
                     .pickerStyle(.menu)
                 }
 
-                // ── Notifications ──────────────────────────────────────────────
-                Section {
-                    Toggle("Due Date Reminders", isOn: $appSettings.notifDueDatesEnabled)
-
-                    if appSettings.notifDueDatesEnabled {
-                        Picker("Remind me for", selection: $appSettings.notifChoreFilter) {
-                            ForEach(NotifChoreFilter.allCases) { filter in
-                                Text(filter.label).tag(filter)
-                            }
-                        }
-
-                        if appSettings.notifChoreFilter == .mine {
-                            Picker("I am", selection: $appSettings.myMemberIndex) {
-                                ForEach(Array(appSettings.members.indices), id: \.self) { i in
-                                    Text(appSettings.memberName(at: i)).tag(i)
-                                }
-                            }
-                        }
-
-                        Toggle("Day-of reminder (9am)", isOn: $appSettings.notifDayOf)
-                        Toggle("Day-before reminder (9am)", isOn: $appSettings.notifDayBefore)
-                    }
-                } header: {
-                    Text("Notifications")
-                } footer: {
-                    if appSettings.notifDueDatesEnabled && !appSettings.notifDayOf && !appSettings.notifDayBefore {
-                        Text("Enable at least one reminder type to receive notifications.")
-                    } else if !appSettings.notifDueDatesEnabled {
-                        Text("Receive a reminder at 9am when a chore is due.")
-                    }
-                }
-
                 // ── About ──────────────────────────────────────────────────────
                 Section("About") {
                     LabeledContent("Version") {
@@ -190,10 +171,6 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .onChange(of: appSettings.notifSettingsHash) { _, _ in
-                NotificationManager.shared.rescheduleAll(choreStore.chores)
-                NotificationManager.shared.rescheduleAllShopping(shoppingStore.items)
-            }
             .alert("Delete All Data?", isPresented: $showingDeleteAlert) {
                 Button("Delete Everything", role: .destructive, action: deleteAll)
                 Button("Cancel", role: .cancel) {}
@@ -252,6 +229,12 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Member \(index + 1)").font(.subheadline).foregroundStyle(.secondary)
                 TextField("Name", text: memberBinding(at: index)).font(.body)
+                let emails = accountEmails(forMember: index)
+                if !emails.isEmpty {
+                    Text(emails.joined(separator: ", "))
+                        .font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(1).truncationMode(.middle)
+                }
             }
             Spacer()
             if appSettings.members.count > 1 && index >= 2 {
@@ -265,6 +248,32 @@ struct SettingsView: View {
             }
         }
         .padding(.vertical, 2)
+    }
+
+    /// Emails of the accounts that picked this member under "I am".
+    private func accountEmails(forMember index: Int) -> [String] {
+        (householdCtrl.household?.accounts ?? [:]).values
+            .filter { $0.memberIndex == index }
+            .compactMap(\.email).sorted()
+    }
+
+    private var membersFooter: String {
+        var text = "Names appear in assignment pickers and sync across all devices in your household. Each person's email shows once they pick themselves under “I am” on their own phone."
+        let count = appSettings.members.count
+        let unlinked = (householdCtrl.household?.accounts ?? [:]).values
+            .filter { ($0.memberIndex ?? count) >= count }
+            .compactMap(\.email).sorted()
+        if !unlinked.isEmpty {
+            text += "\n\nNot linked to a member yet: " + unlinked.joined(separator: ", ")
+        }
+        return text
+    }
+
+    private var myMemberBinding: Binding<Int?> {
+        Binding(
+            get: { appSettings.hasChosenMember ? appSettings.myMemberIndex : nil },
+            set: { if let i = $0 { appSettings.myMemberIndex = i } }
+        )
     }
 
     private func memberBinding(at index: Int) -> Binding<String> {
@@ -327,8 +336,11 @@ struct SettingsView: View {
             wish.notes = notes
             wishStore.save(wish, householdId: hid)
         }
-        if appSettings.myMemberIndex == removed { appSettings.myMemberIndex = 0 }
-        else if appSettings.myMemberIndex > removed { appSettings.myMemberIndex -= 1 }
+        if appSettings.hasChosenMember {
+            if appSettings.myMemberIndex == removed { appSettings.clearMyMember() }
+            else if appSettings.myMemberIndex > removed { appSettings.myMemberIndex -= 1 }
+        }
+        householdCtrl.remapAccounts(afterRemovingMember: removed)
         appSettings.removeMember(at: removed)
     }
 

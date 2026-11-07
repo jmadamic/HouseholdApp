@@ -25,7 +25,7 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 | **Archive meals & trips** | Swipe right on a meal or trip → Archive. Archived items leave the main list and trip pickers and are **exempt from the 1-week auto-cleanup**, so a favourite meal or a trip's packing list keeps for next time. An "Archived" row at the bottom of each tab opens them; swipe to restore or delete for good |
 | **Plan from a spreadsheet** | Meals tab → table icon. Share the bundled Excel/Google Sheets template, fill in meals (plus optional Trips and Packing sheets), import the .xlsx back. Preview shows exactly what will be created; rows with problems are listed by sheet and row number and simply left out. Creates meals, shopping items for "to buy" ingredients, missing trips, and packing items. Re-importing the same file is safe — existing items are skipped |
 | **Voice entry** | Tap the mic on Chores or Shopping and say what you need — *"add task due tomorrow to clean the bathroom"*. Speech is transcribed on-device, parsed for the date, time, and assignee, then prefills the normal form for you to confirm |
-| **Local notifications** | Due-date reminders for chores and need-by reminders for shopping items at 9 am — or at the item's own time when one is set (day-of and/or day-before), filterable to my/shared/all in Settings |
+| **Local notifications** | Reminders for chore due dates, shopping need-by dates, garden harvests, trips (with how many items are left to pack) and planned meals. Settings → Notifications sets the reminder time, whose items (everyone's / mine and shared / shared only), and for each kind an on/off switch, a reminder on the day and an early reminder 1, 2, 3 or 7 days before. Things with a set time remind at that time. Device-local, so each phone chooses its own |
 | **Auto-cleanup** | Completed chores, purchased items, past meals, ended trips, and harvested or done-for-the-season plants are deleted automatically after 1 week |
 | **Easy UI** | Swipe to complete or delete; tap a row to edit; colour-coded urgency sections; VoiceOver labels and 44 pt tap targets throughout |
 | **Scrolling bottom bar** | All seven tabs live in one bar with no More screen: five show at a time; swipe the bar or tap its arrows for the rest. Set the order in Settings → Bottom Bar Order by dragging the handles (per device) |
@@ -66,7 +66,7 @@ HouseholdApp/
     ├── Firebase/
     │   ├── AuthController.swift        ← Anonymous sign-in on first launch; optional Google upgrade
     │   ├── HouseholdController.swift   ← Create/join/leave household; invite codes; member names
-    │   ├── HouseholdDoc.swift          ← /households/{id}: memberIds, ownerId, inviteCode, memberNames
+    │   ├── HouseholdDoc.swift          ← /households/{id}: memberIds, ownerId, inviteCode, memberNames, accounts
     │   ├── ChoreDoc.swift + ChoreStore.swift
     │   ├── CategoryDoc.swift + CategoryStore.swift
     │   ├── CompletionLogDoc.swift
@@ -89,7 +89,7 @@ HouseholdApp/
     │   ├── VoiceIntentParser.swift     ← Turns a transcript into a draft chore / shopping item
     │   ├── Color+Hex.swift             ← Color ↔ "#RRGGBB" hex string conversion
     │   ├── IconView.swift              ← Shared icon + label components
-    │   └── NotificationManager.swift   ← Local due-date reminders (UNUserNotificationCenter)
+    │   └── NotificationManager.swift   ← Local reminders for every dated thing, rebuilt in one pass (UNUserNotificationCenter)
     │
     └── Views/
         ├── RootView.swift              ← Scrolling bottom bar: Chores | Shopping | Meals | Garden | Packing | Looking For | Settings (order configurable) (+ TabRouter for cross-tab links)
@@ -104,7 +104,7 @@ HouseholdApp/
     │   └── MealPlanTemplate.xlsx       ← Spreadsheet template (regenerate with scripts/make-meal-template.py)
         ├── Packing/                    ← Trip list, trip form, trip detail (sections, linked meals/chores)
         ├── Meals/                      ← Meal list, rows, add/edit sheet, My Meals library (saved meals)
-        └── Settings/                   ← Members, invite code, notifications, data summary
+        └── Settings/                   ← Members (with account emails + "I am"), invite code, Notifications screen, data summary
 ```
 
 ---
@@ -198,6 +198,7 @@ All documents are Codable Swift structs in `HouseholdApp/Firebase/`.
 | `memberIds` | [String] | Firebase Auth UIDs with access — enforced by security rules |
 | `ownerId` | String | UID of the creator |
 | `memberNames` | [String]? | Shared display names, synced to every device |
+| `accounts` | {uid: {email, memberIndex}}? | Each phone writes only its own entry: its sign-in email and which member it is ("I am"). Settings shows each email beside its member |
 
 ### ChoreDoc — `…/chores/{id}`
 
@@ -291,6 +292,7 @@ The source of truth is `project.yml` — never edit `project.pbxproj` by hand.
 | UI | SwiftUI — every swipe-to-delete list stays mounted when empty, with its empty state as an overlay (swapping the `List` out mid-delete crashes UIKit) |
 | Backend | Firebase — Cloud Firestore (real-time sync + offline cache), Firebase Auth (anonymous + Google) |
 | Notifications | Local only (`UNUserNotificationCenter`) |
+| Version | 2.2 — `MARKETING_VERSION` in `project.yml` (shown in Settings → About) |
 | Settings storage | UserDefaults via `@AppStorage` (device-local prefs) |
 | Minimum OS | iOS 17 |
 | Language | Swift 5.9 |

@@ -30,6 +30,7 @@ final class GardenStore: ObservableObject {
                     self.plants = (snapshot?.documents ?? []).compactMap {
                         try? $0.data(as: GardenPlantDoc.self)
                     }.sorted { $0.nextHarvestDate < $1.nextHarvestDate }
+                    NotificationManager.shared.update(plants: self.plants)
                     if !self.hasCleanedUp {
                         self.hasCleanedUp = true
                         self.cleanupOldHarvested(householdId: householdId)
