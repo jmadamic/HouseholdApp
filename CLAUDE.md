@@ -2,7 +2,7 @@
 
 Household app for any number of people, built with **SwiftUI + Firebase** (Cloud Firestore + Firebase Auth, project ID `jordan-code`). Jordan and his wife use it daily — **never make changes that could wipe or orphan household data.**
 
-Seven tabs, order configurable per device (Settings → Tab Order): **Chores**, **Shopping**, **Meals**, **Garden**, **Packing**, **Looking For**, **Settings**. iOS shows the first four; the rest go under an automatic More tab.
+Seven tabs, order configurable per device (Settings → Bottom Bar Order): **Chores**, **Shopping**, **Meals**, **Garden**, **Packing**, **Looking For**, **Settings**. The bottom bar shows five at a time and scrolls, by swipe or its arrows; there is no More screen.
 
 ## Build & Run
 
@@ -57,6 +57,7 @@ firebase deploy --only firestore:rules
 - **Auto-cleanup**: completed chores, purchased items, past meals, trips ended >1 week ago (cascading to their packing items), and finished plants (fully harvested, or `seasonEndedAt` set via "Done for Season") are deleted once per session on first snapshot (`hasCleanedUp` flag in each store). Saved meals and wishes are long-lived and never auto-cleaned. **Archived meals and trips (`isArchived == true`) are also exempt** — that's the whole point of archiving over deleting.
 - **Archiving**: `MealStore`/`TripStore` publish everything in `meals`/`trips` (Settings counts and delete-all rely on that) and expose `activeMeals`/`archivedMeals`, `activeTrips`/`archivedTrips`. Tabs, trip pickers (`MealFormView`, `ChoreFormView`), and the spreadsheet importer's dedupe context must use the **active** lists; use the full list only where archived items should count.
 - **Cross-tab links**: `TabRouter` (in `RootView.swift`) owns tab selection, keyed by `AppTab` rawValue so it survives reordering; `router.openMeal(id)` jumps to the Meals tab and opens a meal.
+- **Bottom bar is custom, not `TabView`**: `TabView` forces a More screen past five tabs, even with its bar hidden. `RootView` keeps visited tabs mounted in a `ZStack` (opacity 0, no hit testing, hidden from VoiceOver) so they keep their navigation and scroll state, and `ScrollableTabBar` draws the bar. So `.onAppear` in a tab view fires only on first open, not on every switch; use `onChange` of router state for anything that must react later (see `MealListView.handleDeepLink`). The bar hides while the keyboard is up. Its `ForEach` needs `id: \.self`: `scrollPosition(id:)` matches by that identity, and `AppTab.id` is a String, so the default silently never scrolls. Re-tapping the selected tab does nothing (no pop-to-root).
 - **Adding a tab**: add an `AppTab` case (never rename existing raw values — they're persisted), a `tabContent` branch, the store in `HouseholdAppApp`, a rules block, and the Settings count + delete-all entry.
 - **Prefilled forms**: several flows hand a draft document to an existing form (`ShoppingFormView(item:isPrefilledDraft:)`, `ChoreFormView(chore:isPrefilledDraft:)`, `MealFormView(meal:template:)`). The flag only affects the title — the draft's unused ID means `setData` creates rather than updates.
 - **Notification IDs are prefix-scoped** (`hh-chore-`, `hh-shop-`). Bulk reschedules must remove by prefix — `removeAllPendingNotificationRequests()` would wipe the other kind.

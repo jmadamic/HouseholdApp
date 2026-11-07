@@ -101,7 +101,7 @@ components:
 
 **Creative North Star: "The Fridge Door"**
 
-HouseholdApp is the shared surface a family glances at on the way past: everyone's stuff is on it, each person's things are recognisable by color at a glance, and nothing on it is precious. It is a native iOS app first. The structure is stock UIKit-era iOS (tab bar, navigation stacks, sheets, inset grouped lists), and personality lives only in the layer iOS leaves open: the green tint, per-person color, SF Symbols, and soft tinted badges.
+HouseholdApp is the shared surface a family glances at on the way past: everyone's stuff is on it, each person's things are recognisable by color at a glance, and nothing on it is precious. It is a native iOS app first. The structure is stock UIKit-era iOS (bottom bar, navigation stacks, sheets, inset grouped lists), and personality lives only in the layer iOS leaves open: the green tint, per-person color, SF Symbols, and soft tinted badges.
 
 Density is that of a good to-do list: one line of title, one line of quiet metadata, a big round check target on the left. Color carries meaning (who, what kind, how urgent) rather than decoration, which is why it can be plentiful without being loud: every colored fill is a 12% wash of its color, and full-strength color is reserved for the glyph or text on top of it.
 
@@ -205,7 +205,7 @@ Horizontal row: "All" plus each member by name. The selected tab takes that memb
 At the top of category, store, and item-type forms: a large icon on a 12% wash of the item's color, 14 pt corners, centered.
 
 ### Navigation
-Stock tab bar with SF Symbol tab icons, first four tabs visible and the rest under More; the order is user-configurable. Inline titles on sheets and detail screens; toolbar actions (add, mic, import) are SF Symbols in the tint color.
+A scrolling bottom bar in the system `.bar` material, with SF Symbol tab icons and Caption 2 labels: five tabs visible, snapping to whole tabs, swipeable, with a tint-colored chevron at either end when more tabs lie that way (hidden, keeping its space, when not). The selected tab is tint color, the others secondary. Custom because a stock tab bar forces a More screen past five tabs; it is the one deliberate exception to stock chrome, and it should stay visually indistinguishable from a system tab bar apart from the arrows. The order is user-configurable (Settings → Bottom Bar Order). Inline titles on sheets and detail screens; toolbar actions (add, mic, import) are SF Symbols in the tint color.
 
 ### Empty States
 `ContentUnavailableView` with an SF Symbol and one sentence telling the user the gesture or button that fills the screen.
@@ -222,5 +222,5 @@ Stock tab bar with SF Symbol tab icons, first four tabs visible and the rest und
 ### Don't:
 - **Don't** use fixed point sizes for text (`.caption2`, not `.system(size: 11)`).
 - **Don't** use raw hex for system roles; only user-chosen category colors are hex.
-- **Don't** add shadows, gradients, or custom navigation chrome.
+- **Don't** add shadows, gradients, or custom navigation chrome (the bottom bar is the single exception).
 - **Don't** use red for anything except overdue and destructive states.

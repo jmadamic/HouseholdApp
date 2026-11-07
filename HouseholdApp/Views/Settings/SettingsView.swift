@@ -106,6 +106,15 @@ struct SettingsView: View {
                     }
                 }
 
+                // ── Bottom bar order ───────────────────────────────────────────
+                Section {
+                    NavigationLink {
+                        BottomBarOrderView()
+                    } label: {
+                        Label("Bottom Bar Order", systemImage: "arrow.left.arrow.right")
+                    }
+                }
+
                 // ── Data summary ───────────────────────────────────────────────
                 Section("Data") {
                     LabeledContent("Chores",    value: "\(choreStore.chores.count)")
@@ -138,22 +147,6 @@ struct SettingsView: View {
                         Label("Theme", systemImage: appSettings.appearance.icon)
                     }
                     .pickerStyle(.menu)
-                }
-
-                // ── Tab order ──────────────────────────────────────────────────
-                Section {
-                    ForEach(appSettings.tabOrder) { tab in
-                        Label(tab.label, systemImage: tab.icon)
-                    }
-                    .onMove { appSettings.moveTab(from: $0, to: $1) }
-                } header: {
-                    HStack {
-                        Text("Tab Order")
-                        Spacer()
-                        EditButton().font(.caption)
-                    }
-                } footer: {
-                    Text("Tap Edit and drag to rearrange. The first four tabs show in the bottom bar; the rest live under More. Order is per device.")
                 }
 
                 // ── Notifications ──────────────────────────────────────────────
@@ -349,5 +342,27 @@ struct SettingsView: View {
         packingStore.items.forEach  { packingStore.delete($0,  householdId: hid) }
         gardenStore.plants.forEach  { gardenStore.delete($0,   householdId: hid) }
         wishStore.wishes.forEach    { wishStore.delete($0,     householdId: hid) }
+    }
+}
+
+/// Sets the left-to-right order of the bottom bar. Always in edit mode, because
+/// an EditButton in a Form section header left the drag handles hidden.
+private struct BottomBarOrderView: View {
+    @EnvironmentObject private var appSettings: AppSettings
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(appSettings.tabOrder) { tab in
+                    Label(tab.label, systemImage: tab.icon)
+                }
+                .onMove { appSettings.moveTab(from: $0, to: $1) }
+            } footer: {
+                Text("Drag to set the order, left to right. The bar shows five at a time; use its arrows or swipe it to reach the rest. Order is per device.")
+            }
+        }
+        .environment(\.editMode, .constant(.active))
+        .navigationTitle("Bottom Bar Order")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
