@@ -19,7 +19,7 @@ Everything household-shaped in one app, with the pieces linked rather than siloe
 
 ## Operating Context
 - Used one-handed, mid-task, often while doing the chore or standing in a store.
-- Each item can be assigned to a person or to Everyone; filter bars show "All" plus one tab per member.
+- Each item can be assigned to a person or to Everyone; a person filter in the toolbar narrows a list to one member (plus Everyone's).
 - Voice entry ("add task due tomorrow to clean bathroom") prefills a form for confirmation.
 - Meal plans can be drafted in Excel or Google Sheets from a bundled template and imported.
 - Local reminders only (no push between devices): chores, shopping need-by dates, garden harvests, trips and meals, each customizable per phone.

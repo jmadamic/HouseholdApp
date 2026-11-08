@@ -120,7 +120,7 @@ A bright, playful, many-hued palette held together by one rule: color is always 
 - **Household Green** (#45A86D): the app tint (`AccentColor`). Toolbar buttons, links, selected icon tiles, toggles. The one color that belongs to the app rather than to a person.
 
 ### Secondary
-- **Member colors**, assigned by member index and cycling: Member Blue (#007AFF), Member Pink (#FF2D55), Member Green (#34C759), Member Orange (#FF9500), Member Teal (#30B0C7), Member Red (#FF3B30), Member Mint (#00C7BE), Member Indigo (#5856D6). Used on assignee badges, filter-bar selections, and note authorship in Looking For.
+- **Member colors**, assigned by member index and cycling: Member Blue (#007AFF), Member Pink (#FF2D55), Member Green (#34C759), Member Orange (#FF9500), Member Teal (#30B0C7), Member Red (#FF3B30), Member Mint (#00C7BE), Member Indigo (#5856D6). Used on assignee badges and note authorship in Looking For.
 - **Everyone Purple** (#AF52DE): items assigned to the whole household.
 
 ### Tertiary
@@ -162,7 +162,7 @@ Hex values above are the light-appearance system values; in code they are always
 
 ## Layout
 
-Single-column, full-width iOS lists. Content sits in `.insetGrouped` lists; sticky section headers sit on the grouped background with 16 pt side and 5 pt vertical padding. A row is: 44×44 pt check target, then a VStack of title and caption metadata with badges, then any trailing icon. A horizontal filter bar ("All" plus one tab per member) sits above lists that support assignment. Badges space at 2 pt vertical / 6 pt horizontal padding. Forms are stock `Form` sections with headers and explanatory footers.
+Single-column, full-width iOS lists. Content sits in `.insetGrouped` lists; sticky section headers sit on the grouped background with 16 pt side and 5 pt vertical padding. A row is: 44×44 pt check target, then a VStack of title and caption metadata with badges, then any trailing icon. Lists that support assignment get a person filter in the toolbar, not a bar above the list. Badges space at 2 pt vertical / 6 pt horizontal padding. Forms are stock `Form` sections with headers and explanatory footers.
 
 ## Elevation & Depth
 
@@ -195,8 +195,11 @@ Who an item belongs to, at the trailing edge of every row (`AssigneeBadges`): a 
 ### Undo Banner
 After a delete: a single line ("Deleted \"Milk\"") with an Undo text button, on `.regularMaterial` with 12 pt corners, 16 pt inset, just above the tab bar. Stays 5 seconds, announced to VoiceOver. It's the only floating element in the app, and it carries no shadow.
 
-### Filter Bar
-Horizontal row: "All" plus each member by name. The selected tab takes that member's color; filtering shows items assigned to Everyone too.
+### Person Filter
+A toolbar dropdown (`MemberFilterMenu`) at the trailing edge, before Add: the filter glyph plus the current choice in Subheadline medium tint ("All" or the member's name, truncated past 110 pt). The glyph fills while narrowed, so a filtered list is never mistaken for the whole list. The menu lists All, then each member, with a checkmark on the current one. Filtering shows items assigned to Everyone too. Replaced a segmented bar, which cramped past three members and stacked two bars on Shopping.
+
+### Quantity Badge
+On shopping rows, after the name: the quantity in Caption 2 semibold blue on a 12% blue capsule, like every other row badge. (It was solid blue with white text until Nov 2026, the one Twelve Percent Rule breach.)
 
 ### Icon Picker Tiles
 40×40 pt tiles, 8 pt corners, six per row. Unselected: accent glyph on a 12% accent wash. Selected: white glyph on solid accent. The one place solid color with white is allowed.
@@ -205,7 +208,7 @@ Horizontal row: "All" plus each member by name. The selected tab takes that memb
 At the top of category, store, and item-type forms: a large icon on a 12% wash of the item's color, 14 pt corners, centered.
 
 ### Navigation
-A scrolling bottom bar in the system `.bar` material, with SF Symbol tab icons and Caption 2 labels: five tabs visible, snapping to whole tabs, swipeable, with a tint-colored chevron at either end when more tabs lie that way (hidden, keeping its space, when not). The selected tab is tint color, the others secondary. Custom because a stock tab bar forces a More screen past five tabs; it is the one deliberate exception to stock chrome, and it should stay visually indistinguishable from a system tab bar apart from the arrows. The order is user-configurable (Settings → Bottom Bar Order). Inline titles on sheets and detail screens; toolbar actions (add, mic, import) are SF Symbols in the tint color.
+A scrolling bottom bar in the system `.bar` material, with SF Symbol tab icons and Caption 2 labels: five tabs visible, snapping to whole tabs, swipeable, with a tint-colored chevron at either end when more tabs lie that way (hidden, keeping its space, when not). The selected tab is tint color, the others secondary. Custom because a stock tab bar forces a More screen past five tabs; it is the one deliberate exception to stock chrome, and it should stay visually indistinguishable from a system tab bar apart from the arrows. The order is user-configurable (Settings → Bottom Bar Order). Inline titles on sheets and detail screens; toolbar actions (add, mic) are SF Symbols in the tint color; anything less obvious goes in a "…" menu with text labels (Meals: My Meals, Plan from Spreadsheet).
 
 ### Empty States
 `ContentUnavailableView` with an SF Symbol and one sentence telling the user the gesture or button that fills the screen.

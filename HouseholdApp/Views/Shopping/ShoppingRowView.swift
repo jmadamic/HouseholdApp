@@ -45,9 +45,10 @@ struct ShoppingRowView: View {
                         .strikethrough(item.isPurchased, color: .secondary)
                         .foregroundStyle(item.isPurchased ? .secondary : .primary)
                     if let qty = item.quantitySafe {
-                        Text(qty).font(.caption2.weight(.semibold)).foregroundStyle(.white)
+                        // Same tinted capsule as the other row badges.
+                        Text(qty).font(.caption2.weight(.semibold)).foregroundStyle(.blue)
                             .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(.blue, in: Capsule())   // solid for WCAG contrast
+                            .background(.blue.opacity(0.12), in: Capsule())
                     }
                 }
                 HStack(spacing: 6) {

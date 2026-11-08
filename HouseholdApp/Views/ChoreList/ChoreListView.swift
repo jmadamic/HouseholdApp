@@ -36,7 +36,6 @@ struct ChoreListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                filterBar
                 // Overlaid, not swapped in: see "Lists stay mounted when empty" in CLAUDE.md.
                 List {
                     ForEach(sections, id: \.self) { section in
@@ -65,7 +64,7 @@ struct ChoreListView: View {
                                                   description: Text("Tap + to add your first chore."))
                         } else {
                             ContentUnavailableView("Nothing Here", systemImage: "line.3.horizontal.decrease.circle",
-                                                  description: Text("No chores for \(appSettings.memberName(at: filterIndex)). Try the All tab."))
+                                                  description: Text("No chores for \(appSettings.memberName(at: filterIndex)). Switch the filter to All."))
                         }
                     }
                 }
@@ -77,6 +76,9 @@ struct ChoreListView: View {
                         Image(systemName: "mic.fill").font(.title3)
                     }
                     .accessibilityLabel("Add by voice")
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    MemberFilterMenu(selection: $filterIndex)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { showingAddChore = true } label: {
@@ -97,18 +99,6 @@ struct ChoreListView: View {
         undoCenter.show("Deleted \"\(chore.titleSafe)\"") { [choreStore] in
             choreStore.save(chore, householdId: hid)
         }
-    }
-
-    private var filterBar: some View {
-        Picker("Filter", selection: $filterIndex) {
-            Text("All").tag(-2)
-            ForEach(Array(appSettings.members.indices), id: \.self) { idx in
-                Text(appSettings.memberName(at: idx)).tag(idx)
-            }
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal).padding(.vertical, 5)
-        .background(Color(.systemGroupedBackground))
     }
 
     private func sectionHeader(_ section: ChoreSection) -> some View {

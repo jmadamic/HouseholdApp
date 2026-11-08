@@ -298,12 +298,12 @@
       "css": ".ds-sec{display:flex;gap:6px;align-items:baseline;background:#F2F2F7;padding:5px 16px;font:600 15px -apple-system, system-ui, 'SF Pro Text', sans-serif;color:rgba(60,60,67,.6)}.ds-sec-late{color:#FF3B30}.ds-count{font-weight:400;font-size:12px}"
     },
     {
-      "name": "Filter Bar",
+      "name": "Person Filter",
       "kind": "nav",
       "refersTo": "badge-member",
-      "description": "All + one tab per member; selected takes the member color.",
-      "html": "<div class=\"ds-filter\"><button class=\"ds-ftab\" aria-pressed=\"false\">All</button><button class=\"ds-ftab ds-fsel\" style=\"--c:#007AFF\" aria-pressed=\"true\">Jordan</button><button class=\"ds-ftab\">Partner</button></div>",
-      "css": ".ds-filter{display:flex;gap:8px;padding:8px 16px;font-family:-apple-system, system-ui, 'SF Pro Text', sans-serif}.ds-ftab{font:500 15px -apple-system, system-ui, 'SF Pro Text', sans-serif;padding:6px 14px;border-radius:999px;border:0;background:rgba(118,118,128,.12);color:#000;cursor:pointer}.ds-ftab:focus-visible{outline:2px solid #45A86D}.ds-fsel{background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}"
+      "description": "Toolbar dropdown: filter glyph + current choice in tint; glyph fills while narrowed.",
+      "html": "<button class=\"ds-pfilter ds-pf-on\" aria-label=\"Filter by person\" aria-haspopup=\"menu\"><span class=\"ds-pf-glyph\" aria-hidden=\"true\">≡</span>Jordan</button>",
+      "css": ".ds-pfilter{display:inline-flex;align-items:center;gap:4px;background:none;border:0;color:#45A86D;font:500 15px -apple-system, system-ui, 'SF Pro Text', sans-serif;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}.ds-pfilter:focus-visible{outline:2px solid #45A86D;outline-offset:2px}.ds-pf-glyph{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:1.5px solid #45A86D;font-size:12px}.ds-pf-on .ds-pf-glyph{background:#45A86D;color:#fff}"
     },
     {
       "name": "Icon Tile",

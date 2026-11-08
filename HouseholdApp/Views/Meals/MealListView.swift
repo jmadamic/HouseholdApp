@@ -65,7 +65,6 @@ struct MealListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                filterBar
                 // Overlaid, not swapped in: see "Lists stay mounted when empty" in CLAUDE.md.
                 List {
                     ForEach(days, id: \.self) { day in
@@ -134,7 +133,7 @@ struct MealListView: View {
                                                   description: Text("Tap + to plan your first meal."))
                         } else {
                             ContentUnavailableView("Nothing Here", systemImage: "line.3.horizontal.decrease.circle",
-                                                  description: Text("No meals for \(appSettings.memberName(at: filterIndex)). Try the All tab."))
+                                                  description: Text("No meals for \(appSettings.memberName(at: filterIndex)). Switch the filter to All."))
                         }
                     }
                 }
@@ -142,16 +141,22 @@ struct MealListView: View {
             .navigationTitle("Meals")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button { showingSavedMeals = true } label: {
-                        Image(systemName: "text.book.closed").font(.title3)
+                    // Text-labelled menu: the bare book and grid icons
+                    // weren't self-explanatory.
+                    Menu {
+                        Button { showingSavedMeals = true } label: {
+                            Label("My Meals", systemImage: "text.book.closed")
+                        }
+                        Button { showingImport = true } label: {
+                            Label("Plan from Spreadsheet", systemImage: "tablecells")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle").font(.title3)
                     }
-                    .accessibilityLabel("My Meals library")
+                    .accessibilityLabel("More meal options")
                 }
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { showingImport = true } label: {
-                        Image(systemName: "tablecells").font(.title3)
-                    }
-                    .accessibilityLabel("Plan from spreadsheet")
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    MemberFilterMenu(selection: $filterIndex)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { showingAddMeal = true } label: {
@@ -183,18 +188,6 @@ struct MealListView: View {
               let meal = mealStore.meals.first(where: { $0.id == id }) else { return }
         router.mealToOpen = nil
         mealToEdit = meal
-    }
-
-    private var filterBar: some View {
-        Picker("Filter", selection: $filterIndex) {
-            Text("All").tag(-2)
-            ForEach(Array(appSettings.members.indices), id: \.self) { idx in
-                Text(appSettings.memberName(at: idx)).tag(idx)
-            }
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal).padding(.vertical, 5)
-        .background(Color(.systemGroupedBackground))
     }
 
 }
