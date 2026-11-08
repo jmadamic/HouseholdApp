@@ -53,20 +53,10 @@ struct ShoppingListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                VStack(spacing: 6) {
-                    Picker("Group by", selection: $groupBy) {
-                        ForEach(ShoppingGroupBy.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-
-                    Picker("Filter", selection: $filterIndex) {
-                        Text("All").tag(-2)
-                        ForEach(Array(appSettings.members.indices), id: \.self) { idx in
-                            Text(appSettings.memberName(at: idx)).tag(idx)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                Picker("Group by", selection: $groupBy) {
+                    ForEach(ShoppingGroupBy.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
+                .pickerStyle(.segmented)
                 .padding(.horizontal).padding(.vertical, 5)
                 .background(Color(.systemGroupedBackground))
 
@@ -134,7 +124,7 @@ struct ShoppingListView: View {
                                                   description: Text("Tap + to add your first shopping item."))
                         } else {
                             ContentUnavailableView("Nothing Here", systemImage: "line.3.horizontal.decrease.circle",
-                                                  description: Text("No items for \(appSettings.memberName(at: filterIndex)). Try the All tab."))
+                                                  description: Text("No items for \(appSettings.memberName(at: filterIndex)). Switch the filter to All."))
                         }
                     }
                 }
@@ -154,6 +144,9 @@ struct ShoppingListView: View {
                         }
                         .accessibilityLabel("Clear purchased items")
                     }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    MemberFilterMenu(selection: $filterIndex)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { showingAddItem = true } label: {

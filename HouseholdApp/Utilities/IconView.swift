@@ -83,6 +83,50 @@ struct AssigneeBadges: View {
     }
 }
 
+// ── MemberFilterMenu ──────────────────────────────────────────────────────────
+
+/// Toolbar dropdown that filters a list to one member's items (plus
+/// Everyone's). Replaces the old segmented "All / Me / Partner" bar, which
+/// cramped with more than three members or long names. `selection` is -2 for
+/// All, otherwise a member index. The label names the current choice, and the
+/// icon fills while the list is narrowed so a filtered list is obvious.
+struct MemberFilterMenu: View {
+    @EnvironmentObject private var appSettings: AppSettings
+    @Binding var selection: Int
+
+    static let all = -2
+    private var isFiltered: Bool { selection >= 0 }
+
+    var body: some View {
+        Menu {
+            Picker("Show items for", selection: $selection) {
+                Text("All").tag(Self.all)
+                ForEach(Array(appSettings.members.indices), id: \.self) { idx in
+                    Text(appSettings.memberName(at: idx)).tag(idx)
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: isFiltered
+                      ? "line.3.horizontal.decrease.circle.fill"
+                      : "line.3.horizontal.decrease.circle")
+                Text(isFiltered ? appSettings.memberName(at: selection) : "All")
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: 110)
+            }
+            .font(.subheadline.weight(.medium))
+        }
+        .accessibilityLabel("Filter by person")
+        .accessibilityValue(isFiltered ? appSettings.memberName(at: selection) : "All")
+        // Reset if the selected member was removed in Settings.
+        .onChange(of: appSettings.members.count) { _, count in
+            if selection >= count { selection = Self.all }
+        }
+    }
+}
+
 // ── AppIconLabel ──────────────────────────────────────────────────────────────
 
 /// Drop-in replacement for Label(title, systemImage:) that supports emoji icons.
