@@ -9,7 +9,6 @@ struct CategoryDoc: Codable, Identifiable {
 
     var nameSafe: String     { name }
     var iconNameSafe: String { iconName }
-    var colorSafe: String    { colorHex }
 
     init(id: String = UUID().uuidString, name: String, colorHex: String, iconName: String, sortOrder: Int32 = 0) {
         self.id = id

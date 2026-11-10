@@ -227,6 +227,9 @@ struct MealPlanImportView: View {
             let accessed = url.startAccessingSecurityScopedResource()
             defer { if accessed { url.stopAccessingSecurityScopedResource() } }
             do {
+                // Check the size before loading the file into memory.
+                let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                guard size <= 20 * 1024 * 1024 else { throw XLSXError.tooLarge }
                 let data = try Data(contentsOf: url)
                 let workbook = try XLSXReader.read(data)
                 let context = MealPlanImportContext(

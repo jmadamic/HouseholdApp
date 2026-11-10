@@ -1,11 +1,8 @@
 // AppSettings.swift
 // HouseholdApp
 //
-// Lightweight observable wrapper around UserDefaults (@AppStorage) for
-// user-configurable settings that don't belong in Core Data.
-//
-// Inject via .environmentObject(AppSettings()) in HouseholdAppApp,
-// then read with @EnvironmentObject var appSettings: AppSettings.
+// Observable wrapper around UserDefaults (@AppStorage) for device-local
+// settings. Shared data lives in Firestore (see Firebase/).
 
 import SwiftUI
 import Combine
@@ -75,9 +72,6 @@ enum NotifCategory: String, CaseIterable, Identifiable {
         case .meals:    return "Includes how many ingredients you still need."
         }
     }
-
-    /// Whether "Remind me about" (everyone's / mine / shared) applies.
-    var usesAssignees: Bool { self == .chores || self == .shopping || self == .meals }
 
     var onKey:    String { "notif.\(rawValue).on" }
     var dayOfKey: String { "notif.\(rawValue).dayOf" }
@@ -251,21 +245,6 @@ class AppSettings: ObservableObject {
     /// modulo) don't crash on it.
     static let formerMemberIndex = 999
 
-    /// Convenience: first member name (backward compat).
-    var myName: String {
-        get { members.indices.contains(0) ? members[0] : "Me" }
-        set { renameMember(at: 0, to: newValue) }
-    }
-
-    /// Convenience: second member name (backward compat).
-    var partnerName: String {
-        get { members.indices.contains(1) ? members[1] : "Partner" }
-        set { renameMember(at: 1, to: newValue) }
-    }
-
-    /// Number of members in the household.
-    var memberCount: Int { members.count }
-
     func addMember(_ name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
@@ -291,12 +270,6 @@ class AppSettings: ObservableObject {
         encodeMemberNames(list)
     }
 
-    func moveMember(from source: IndexSet, to destination: Int) {
-        var list = members
-        list.move(fromOffsets: source, toOffset: destination)
-        encodeMemberNames(list)
-    }
-
     // ── Member display helpers ────────────────────────────────────────────────
 
     func memberName(at index: Int) -> String {
@@ -317,23 +290,6 @@ class AppSettings: ObservableObject {
 
     func memberColor(at index: Int) -> Color {
         MemberAssignment.memberColors[index % MemberAssignment.memberColors.count]
-    }
-
-    /// Returns the display name for an assignee value (stored in Core Data as Int16).
-    func assigneeName(for assignment: MemberAssignment) -> String {
-        if assignment.isEveryone { return "Everyone" }
-        guard let idx = assignment.memberIndex else { return "Unknown" }
-        return memberName(at: idx)
-    }
-
-    /// Returns the icon for an assignee value.
-    func assigneeIcon(for assignment: MemberAssignment) -> String {
-        assignment.systemImage
-    }
-
-    /// All possible assignments: Everyone first, then each member.
-    var allAssignments: [MemberAssignment] {
-        [.everyone] + members.indices.map { MemberAssignment.member($0) }
     }
 
     /// Called when Firestore pushes updated names from another device.

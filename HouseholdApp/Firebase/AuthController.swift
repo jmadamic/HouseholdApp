@@ -37,7 +37,6 @@ final class AuthController: ObservableObject {
     var isSignedIn:  Bool    { user != nil }
     var isAnonymous: Bool    { user?.isAnonymous ?? true }
     var uid:         String? { user?.uid }
-    var displayName: String? { user?.displayName }
     var email:       String? { user?.email }
 
     // ── Anonymous sign-in ──────────────────────────────────────────────────────
@@ -54,8 +53,9 @@ final class AuthController: ObservableObject {
     // If the user is anonymous, their account is linked to Google so all their
     // existing household data is preserved under the same UID.
     // If linking fails (Google account already exists), falls back to direct sign-in.
-    func signInWithGoogle(presenting: UIViewController) async {
+    func signInWithGoogle() async {
         errorMessage = nil
+        guard let presenting = Self.topViewController() else { return }
         guard let clientID = FirebaseApp.app()?.options.clientID else {
             errorMessage = "Firebase is not configured."
             return
@@ -84,9 +84,22 @@ final class AuthController: ObservableObject {
             } else {
                 _ = try await Auth.auth().signIn(with: credential)
             }
+        } catch let error as GIDSignInError where error.code == .canceled {
+            // Backing out of Google's sheet isn't an error worth an alert.
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// The top-most view controller, for presenting Google's sign-in sheet.
+    private static func topViewController() -> UIViewController? {
+        guard let scene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController
+        else { return nil }
+        var top = root
+        while let presented = top.presentedViewController { top = presented }
+        return top
     }
 
     // ── Sign Out (back to anonymous) ───────────────────────────────────────────

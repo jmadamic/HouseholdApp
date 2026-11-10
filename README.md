@@ -14,7 +14,7 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 | **Due dates** | Pick a specific date (optionally with a time), any week, any month, or no due date — supports future weeks and months |
 | **Repeating chores** | Daily, weekly, bi-weekly, monthly, or yearly — chore resets automatically after completion |
 | **Completion tracking** | Per-person history stored for every completion |
-| **Household sharing** | One person creates the household; others join with a 6-character invite code from Settings. Changes sync to every device in real time |
+| **Household sharing** | One person creates the household; others join with an invite code from Settings. Changes sync to every device in real time. **New Invite Code** in Settings replaces the code if it reaches someone it shouldn't; people who already joined stay |
 | **Shared member names** | Member names are stored on the household document, so renaming someone updates every device |
 | **Shopping list** | Separate tab for groceries/household items — group by store or by type, with assignee support. Stores and item types are fully editable with custom icons. Items can carry an optional "need by" date/time that reminds whoever they're assigned to |
 | **Packing lists** | Create trips/events with dates and pack per-section (Clothing, Food, Toiletries, custom…). Meals tied to a trip auto-add their ingredients to the Food section; chores can be tied to a trip too (e.g. "turn off water heater before leaving") |
@@ -55,6 +55,7 @@ HouseholdApp/
 ├── scripts/refresh-sideload.sh         ← Rebuild + reinstall any phone whose install is 3+ days old
 ├── scripts/com.householdapp.refresh-sideload.plist  ← launchd schedule
 ├── scripts/install-refresh-agent.sh  ← Installs/reloads that schedule correctly and verifies it
+├── scripts/test-firestore-rules.py   ← Checks the deployed security rules with throwaway accounts and its own household
 ├── PRODUCT.md / DESIGN.md             ← Impeccable design context: who it's for + the visual system
 ├── .impeccable/design.json             ← DESIGN.md sidecar (component snippets, tonal ramps)
 ├── .claude/skills/impeccable/          ← Impeccable design skill for Claude Code (/impeccable …)
@@ -66,8 +67,8 @@ HouseholdApp/
     │
     ├── Firebase/
     │   ├── AuthController.swift        ← Anonymous sign-in on first launch; optional Google upgrade
-    │   ├── HouseholdController.swift   ← Create/join/leave household; invite codes; member names
-    │   ├── HouseholdDoc.swift          ← /households/{id}: memberIds, ownerId, inviteCode, memberNames, accounts
+    │   ├── HouseholdController.swift   ← Find-or-create/join/leave household; invite codes; member names
+    │   ├── HouseholdDoc.swift          ← /households/{id}: memberIds, ownerId, inviteCode, memberNames, accounts, joinCodes
     │   ├── ChoreDoc.swift + ChoreStore.swift
     │   ├── CategoryDoc.swift + CategoryStore.swift
     │   ├── CompletionLogDoc.swift
@@ -81,7 +82,7 @@ HouseholdApp/
     │
     ├── Models/
     │   ├── Enums.swift                 ← DueDateType, RepeatInterval, ChoreSection
-    │   └── MemberAssignment.swift      ← Everyone / member-index assignment helper + colours
+    │   └── MemberAssignment.swift      ← Member colour palette
     │
     ├── Utilities/
     │   ├── XLSXReader.swift            ← Dependency-free .xlsx reader (zip + Compression + XMLParser)
@@ -94,7 +95,6 @@ HouseholdApp/
     │
     └── Views/
         ├── RootView.swift              ← Scrolling bottom bar: Chores | Shopping | Meals | Garden | Packing | Looking For | Settings (order configurable) (+ TabRouter for cross-tab links)
-        ├── Auth/                       ← Sign-in and household setup screens
         ├── ChoreList/ + ChoreForm/     ← Chore list, rows, add/edit sheet
         ├── Categories/                 ← Category grid and add/edit form
         ├── Shopping/                   ← Shopping list, rows, item/store/type forms
@@ -172,7 +172,7 @@ The Mac still has to be awake (lid open) for a refresh to happen — but any day
 Each person uses their own device and their own (anonymous or Google) Firebase account.
 
 1. **Person A** installs the app — a household is auto-created for them.
-2. Person A opens **Settings → Household Sharing** and shares the 6-character **invite code**.
+2. Person A opens **Settings → Household Sharing** and shares the **invite code**.
 3. **Person B** taps **Join a Different Household** in their Settings and enters the code.
 4. Both phones now read and write the same household — chores, shopping, meals, and member names all sync in real time.
 
@@ -180,7 +180,8 @@ Each person uses their own device and their own (anonymous or Google) Firebase a
 
 - All data lives under a single Firestore document tree: `/households/{householdId}` with subcollections `chores`, `categories`, `completions`, `shoppingItems`, `meals`, `savedMeals`, `trips`, `packingItems`, `gardenPlants`, and `wishes`.
 - The household doc holds `memberIds` (Firebase Auth UIDs). Security rules only allow reads/writes when `request.auth.uid` is in that array.
-- Invite codes live at `/invites/{code} → householdId`. Only household members can create or rotate codes; joining adds your UID to `memberIds` (and may touch nothing else).
+- Invite codes live at `/invites/{code} → householdId`. Only household members can create or rotate codes. Joining adds your UID to `memberIds` and records the code you presented under `joinCodes.<uid>`, which the rules check against the household's current code.
+- On launch the app looks up the household your account already belongs to before creating one, so signing out and back in, or reinstalling, returns you to the same household.
 - Each store (`ChoreStore`, `ShoppingStore`, `MealStore`, `CategoryStore`) keeps a snapshot listener open, so remote edits appear immediately; Firestore's local cache keeps the app working offline.
 - Signing in with Google links the anonymous account, preserving the same UID (and therefore household membership) across reinstalls.
 
@@ -195,10 +196,11 @@ All documents are Codable Swift structs in `HouseholdApp/Firebase/`.
 | Field | Type | Description |
 |---|---|---|
 | `name` | String? | Optional display name |
-| `inviteCode` | String | 6-character join code (also indexed at `/invites/{code}`) |
+| `inviteCode` | String | Join code, 8 characters (6 on households created before Nov 2026 until changed); also indexed at `/invites/{code}` |
 | `memberIds` | [String] | Firebase Auth UIDs with access — enforced by security rules |
 | `ownerId` | String | UID of the creator |
 | `memberNames` | [String]? | Shared display names, synced to every device |
+| `joinCodes` | {uid: String}? | The invite code each account presented when joining. Written only by the joiner; read only by the security rules |
 | `accounts` | {uid: {email, memberIndex}}? | Each phone writes only its own entry: its sign-in email and which member it is ("I am"). Settings shows each email beside its member |
 
 ### ChoreDoc — `…/chores/{id}`
@@ -247,8 +249,10 @@ Categories: `name`, `colorHex`, `iconName`, `sortOrder`. Completion logs: `chore
 
 - Household reads/updates/deletes require your UID in `memberIds`.
 - Household creation requires you to be the sole member and owner.
-- Joining (self-add to `memberIds`) may touch **only** that field.
-- Invite codes can only be created by the household owner (same-batch creation) or an existing member (rotation) — prevents invite forgery.
+- Joining requires presenting the household's **current** invite code (`joinCodes.<your uid>`), adding only yourself and removing nobody. Knowing a household's document ID isn't enough, and an old code stops working once it's changed.
+- Members can't change the owner, add other accounts, or remove anyone but themselves.
+- `python3 scripts/test-firestore-rules.py` checks all of this against the deployed rules (28 checks; it creates and deletes its own household and guest accounts). Run it after every rules deploy.
+- Invite codes can only be created by the household owner (same-batch creation) or an existing member (rotation), and only for the household's own current code — prevents invite forgery and spare codes.
 - Invites allow `get` by exact code only — `list` is denied, so codes can't be enumerated by querying the collection.
 - Every subcollection (`chores`, `categories`, `completions`, `shoppingItems`, `meals`, `savedMeals`, `trips`, `packingItems`, `gardenPlants`, `wishes`) is member-only.
 

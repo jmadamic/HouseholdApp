@@ -2,7 +2,7 @@
 // HouseholdApp
 //
 // Extends SwiftUI.Color with hex string initialisation and export.
-// Used by Category to store and retrieve colors from Core Data.
+// Categories store their color as a hex string.
 
 import SwiftUI
 
