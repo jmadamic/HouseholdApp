@@ -1,12 +1,8 @@
 // Enums.swift
 // HouseholdApp
 //
-// Typed Swift enums that wrap the Integer 16 values stored in Core Data.
-// Using raw Int16 values in Core Data (required for CloudKit compatibility)
-// while exposing clean Swift enums everywhere else in the codebase.
-//
-// Note: AssignedTo has been replaced by MemberAssignment (see MemberAssignment.swift)
-// to support N household members instead of a fixed Me/Partner/Both.
+// Typed Swift enums over the raw Int16 values stored on Firestore documents.
+// The raw values are persisted: never renumber existing cases.
 
 import SwiftUI
 

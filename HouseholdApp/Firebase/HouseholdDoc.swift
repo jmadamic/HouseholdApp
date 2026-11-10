@@ -41,12 +41,3 @@ struct HouseholdAccount: Codable, Hashable {
     /// Index into memberNames; nil until that phone picks "I am".
     var memberIndex: Int?
 }
-
-/// A /invites/{code} document maps a short invite code → household ID so that
-/// joiners can look up the household without already knowing its document ID.
-struct InviteDoc: Identifiable, Codable {
-    /// Document ID IS the invite code (uppercase).
-    @DocumentID var id: String?
-    var householdId: String
-    var createdAt: Date
-}

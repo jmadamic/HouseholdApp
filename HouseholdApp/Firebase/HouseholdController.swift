@@ -20,6 +20,8 @@ final class HouseholdController: ObservableObject {
     // Cache the current household ID in UserDefaults across launches.
     private let householdIdKey = "currentHouseholdId"
     private var householdListener: ListenerRegistration?
+    /// Stops two callers from each finding-or-creating a household at once.
+    private var isResolvingHousehold = false
 
     private var db: Firestore { Firestore.firestore() }
 
@@ -52,7 +54,6 @@ final class HouseholdController: ObservableObject {
                         // Clear and recreate so the user lands in a working household.
                         let nsError = error as NSError
                         if nsError.domain == "FIRFirestoreErrorDomain" && nsError.code == 7 {
-                            print("[HouseholdController] Permission denied for \(householdId) — clearing stale ID")
                             self.clearCurrentHousehold()
                             await self.autoCreateIfNeeded()
                             return
@@ -66,7 +67,6 @@ final class HouseholdController: ObservableObject {
                         // household belongs to someone else. Reset it.
                         if let doc, let uid = Auth.auth().currentUser?.uid,
                            !doc.memberIds.contains(uid) {
-                            print("[HouseholdController] UID \(uid) not in household memberIds — resetting")
                             self.clearCurrentHousehold()
                             await self.autoCreateIfNeeded()
                             return
@@ -90,16 +90,50 @@ final class HouseholdController: ObservableObject {
         household = nil
     }
 
-    // ── Auto-create a personal household (silent, no UI) ──────────────────────
-    // Called right after sign-in. If the user already has a household this is
-    // a no-op. Creates a household named after the user's display name / email
-    // so they land straight in the app without any setup screen.
+    // ── Find or create a household (silent, no UI) ────────────────────────────
+    // Called right after sign-in and whenever the cached household turns out
+    // not to be ours. If the account already belongs to a household, go back
+    // to it: signing out and in again, or reinstalling, changes which
+    // household ID is cached, and creating a fresh one each time stranded the
+    // phone in an empty household while the real one sat untouched. Only an
+    // account with no household gets a new one.
+    //
+    // The lookup must come from the server: offline, a cached "no results"
+    // would look like a new account and create a duplicate. So while the
+    // server can't be reached this waits and retries ("Setting up…" stays up).
     func autoCreateIfNeeded() async {
-        guard currentHouseholdId == nil,
-              let uid = Auth.auth().currentUser?.uid else { return }
-        let displayName = Auth.auth().currentUser?.displayName
-        await createHousehold(name: displayName)
-        _ = uid  // silence unused-variable warning
+        guard currentHouseholdId == nil, !isResolvingHousehold,
+              let user = Auth.auth().currentUser else { return }
+        isResolvingHousehold = true
+        defer { isResolvingHousehold = false }
+
+        while currentHouseholdId == nil, Auth.auth().currentUser?.uid == user.uid {
+            do {
+                if let existing = try await existingHouseholdId(for: user.uid) {
+                    setCurrentHousehold(existing)
+                } else {
+                    await createHousehold(name: user.displayName)
+                }
+                return
+            } catch {
+                try? await Task.sleep(for: .seconds(3))
+            }
+        }
+    }
+
+    /// The household this account already belongs to, if any. With several
+    /// (an early personal one plus the shared one it later joined), the one
+    /// with the most people wins, then the oldest.
+    private func existingHouseholdId(for uid: String) async throws -> String? {
+        let snapshot = try await db.collection("households")
+            .whereField("memberIds", arrayContains: uid).getDocuments(source: .server)
+        let found = snapshot.documents.compactMap { try? $0.data(as: HouseholdDoc.self) }
+        let best = found.max { a, b in
+            a.memberIds.count != b.memberIds.count
+                ? a.memberIds.count < b.memberIds.count
+                : a.createdAt > b.createdAt
+        }
+        return best?.id
     }
 
     // ── Create household ───────────────────────────────────────────────────────
@@ -159,13 +193,16 @@ final class HouseholdController: ObservableObject {
                 errorMessage = "Invite code not found."
                 return
             }
-            // Add this user to the household's member list.
+            // Add this user to the household's member list. `joinCodes.<uid>`
+            // is what the security rules check against the household's
+            // current invite code; it has no other use.
             try await db.collection("households").document(householdId).updateData([
-                "memberIds": FieldValue.arrayUnion([uid])
+                "memberIds": FieldValue.arrayUnion([uid]),
+                "joinCodes.\(uid)": normalized
             ])
             setCurrentHousehold(householdId)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "Couldn't join that household. Check the code, or ask for a new one if it was changed."
         }
     }
 
@@ -263,7 +300,8 @@ final class HouseholdController: ObservableObject {
         db.collection("households").document(id).updateData(updates)
     }
 
-    // ── Rotate invite code (optional future feature) ──────────────────────────
+    // ── Replace the invite code ───────────────────────────────────────────────
+    // The old code stops working at once. People who already joined stay.
     func rotateInviteCode() async {
         guard let id = currentHouseholdId,
               let oldCode = household?.inviteCode else { return }
@@ -279,14 +317,18 @@ final class HouseholdController: ObservableObject {
             ], forDocument: db.collection("invites").document(newCode))
             try await batch.commit()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "Couldn't change the invite code. \(error.localizedDescription)"
         }
     }
 
     // ── Invite code generator ─────────────────────────────────────────────────
-    private static func generateInviteCode(length: Int = 6) -> String {
+    // 8 characters (31^8, about 850 billion) rather than the original 6: any
+    // signed-in client can look a code up, so short codes could be guessed
+    // by trying them. Codes made before this stay 6 until they're changed.
+    private static func generateInviteCode(length: Int = 8) -> String {
         // Exclude ambiguous characters (0, O, 1, I, L).
         let charset = Array("ABCDEFGHJKMNPQRSTUVWXYZ23456789")
-        return String((0..<length).map { _ in charset.randomElement()! })
+        var rng = SystemRandomNumberGenerator()
+        return String((0..<length).map { _ in charset.randomElement(using: &rng)! })
     }
 }

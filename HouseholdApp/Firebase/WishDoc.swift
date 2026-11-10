@@ -108,7 +108,6 @@ struct WishDoc: Codable, Identifiable {
     }
 
     var mustHaves:  [WishCriterion] { criteria.filter { $0.isMustHave } }
-    var niceToHaves: [WishCriterion] { criteria.filter { !$0.isMustHave } }
 
     /// Newest research first.
     var notesNewestFirst: [WishNote] {

@@ -26,6 +26,8 @@ struct SettingsView: View {
     @State private var joinCode           = ""
     @State private var memberToRemove: Int? = nil
     @State private var showingRemoveMemberAlert = false
+    @State private var showingSignOutAlert = false
+    @State private var showingNewCodeAlert = false
 
     var body: some View {
         NavigationStack {
@@ -72,14 +74,24 @@ struct SettingsView: View {
                             } label: {
                                 Image(systemName: copiedCode ? "checkmark" : "doc.on.doc")
                                     .foregroundStyle(copiedCode ? Color.green : Color.accentColor)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(copiedCode ? "Invite code copied" : "Copy invite code")
                         }
                         .padding(.vertical, 4)
 
-                        Text("\(household.memberIds.count) member(s) in this household")
+                        Text(household.memberIds.count == 1
+                             ? "Only this phone has joined so far"
+                             : "\(household.memberIds.count) accounts have joined")
                             .font(.caption).foregroundStyle(.secondary)
 
-                        Button { showingJoinSheet = true } label: {
+                        Button { showingNewCodeAlert = true } label: {
+                            Label("New Invite Code", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                        .disabled(householdCtrl.isBusy)
+                        Button { joinCode = ""; showingJoinSheet = true } label: {
                             Label("Join a Different Household", systemImage: "person.badge.plus")
                         }
                         Button(role: .destructive) { showingLeaveAlert = true } label: {
@@ -89,7 +101,7 @@ struct SettingsView: View {
                     } header: {
                         Text("Household Sharing")
                     } footer: {
-                        Text("Share your invite code with others so they can join. Or join someone else's household with their code.")
+                        Text("Share your invite code with others so they can join. Anyone with the code can see and change everything here, so get a new code if it reaches someone it shouldn't. Or join someone else's household with their code.")
                     }
                 }
 
@@ -97,10 +109,7 @@ struct SettingsView: View {
                 Section("Account") {
                     if auth.isAnonymous {
                         Button {
-                            Task {
-                                guard let root = SignInView.topViewController() else { return }
-                                await auth.signInWithGoogle(presenting: root)
-                            }
+                            Task { await auth.signInWithGoogle() }
                         } label: {
                             Label("Sign in with Google to sync", systemImage: "person.crop.circle.badge.checkmark")
                         }
@@ -108,7 +117,7 @@ struct SettingsView: View {
                         if let email = auth.email {
                             LabeledContent("Signed in as", value: email)
                         }
-                        Button(role: .destructive) { auth.signOut() } label: {
+                        Button(role: .destructive) { showingSignOutAlert = true } label: {
                             Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
                         }
                     }
@@ -139,17 +148,6 @@ struct SettingsView: View {
                     LabeledContent("Purchased", value: "\(shoppingStore.items.filter(\.isPurchased).count)")
                 }
 
-                // ── Danger zone ────────────────────────────────────────────────
-                Section {
-                    Button(role: .destructive) { showingDeleteAlert = true } label: {
-                        Label("Delete All Data", systemImage: "trash").foregroundStyle(.red)
-                    }
-                } header: {
-                    Text("Danger Zone")
-                } footer: {
-                    Text("Permanently deletes all chores, shopping items, categories, and completion history.")
-                }
-
                 // ── Appearance ─────────────────────────────────────────────────
                 Section("Appearance") {
                     Picker(selection: $appSettings.appearance) {
@@ -169,13 +167,24 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+
+                // ── Danger zone ────────────────────────────────────────────────
+                Section {
+                    Button(role: .destructive) { showingDeleteAlert = true } label: {
+                        Label("Delete All Data", systemImage: "trash").foregroundStyle(.red)
+                    }
+                } header: {
+                    Text("Danger Zone")
+                } footer: {
+                    Text("Deletes everything in every tab, for everyone in the household. Categories, members and settings are kept.")
+                }
             }
             .navigationTitle("Settings")
             .alert("Delete All Data?", isPresented: $showingDeleteAlert) {
                 Button("Delete Everything", role: .destructive, action: deleteAll)
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This permanently deletes all chores and shopping items. Cannot be undone.")
+                Text("This permanently deletes every chore, shopping item, meal, saved meal, trip, packing list, garden plant and Looking For item, for everyone in the household. It can't be undone.")
             }
             .alert("Leave Household?", isPresented: $showingLeaveAlert) {
                 Button("Leave", role: .destructive) {
@@ -183,7 +192,24 @@ struct SettingsView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("You'll lose access to shared chores and shopping items.")
+                Text(leaveMessage)
+            }
+            .alert("Sign Out?", isPresented: $showingSignOutAlert) {
+                Button("Sign Out", role: .destructive) { auth.signOut() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This phone will switch to a new, empty household. Nothing is deleted: sign in again with the same Google account to come back to this one.")
+            }
+            .alert("Get a New Invite Code?", isPresented: $showingNewCodeAlert) {
+                Button("New Code") { Task { await householdCtrl.rotateInviteCode() } }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("The current code stops working straight away. Everyone who has already joined stays in the household.")
+            }
+            .alert("Something Went Wrong", isPresented: errorBinding) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(householdCtrl.errorMessage ?? auth.errorMessage ?? "")
             }
             .alert("Remove Member?", isPresented: $showingRemoveMemberAlert, presenting: memberToRemove) { index in
                 Button("Remove", role: .destructive) { removeMember(at: index) }
@@ -206,7 +232,7 @@ struct SettingsView: View {
                 Text("Enter the name for the new household member.")
             }
             .alert("Join a Household", isPresented: $showingJoinSheet) {
-                TextField("6-character invite code", text: $joinCode)
+                TextField("Invite code", text: $joinCode)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
                 Button("Join") {
@@ -267,6 +293,22 @@ struct SettingsView: View {
             text += "\n\nNot linked to a member yet: " + unlinked.joined(separator: ", ")
         }
         return text
+    }
+
+    /// Leaving as the last account deletes the household, so say so.
+    private var leaveMessage: String {
+        (householdCtrl.household?.memberIds.count ?? 0) <= 1
+            ? "You're the only account in this household, so leaving permanently deletes it and everything in it. This can't be undone."
+            : "This phone will lose access to everything in this household. The others keep it, and you can rejoin with the invite code."
+    }
+
+    /// Shows errors from joining, leaving, changing the code, or signing in,
+    /// which were previously set but never displayed here.
+    private var errorBinding: Binding<Bool> {
+        Binding(
+            get: { householdCtrl.errorMessage != nil || auth.errorMessage != nil },
+            set: { if !$0 { householdCtrl.errorMessage = nil; auth.errorMessage = nil } }
+        )
     }
 
     private var myMemberBinding: Binding<Int?> {

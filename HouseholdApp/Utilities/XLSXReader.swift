@@ -21,6 +21,7 @@ enum XLSXError: LocalizedError {
     case inflateFailed(String)
     case missingPart(String)
     case malformed(String)
+    case tooLarge
 
     var errorDescription: String? {
         switch self {
@@ -29,6 +30,7 @@ enum XLSXError: LocalizedError {
         case .inflateFailed(let n):           return "Couldn't decompress \(n)."
         case .missingPart(let n):             return "The spreadsheet is missing \(n) — re-save it as .xlsx and try again."
         case .malformed(let what):            return "The spreadsheet couldn't be read (\(what))."
+        case .tooLarge:                       return "That spreadsheet is too large to import."
         }
     }
 }
@@ -122,6 +124,11 @@ private struct ZipEntry {
 
 private enum ZipArchive {
 
+    /// A part's declared size is read from the file itself and allocated up
+    /// front, so cap it: a damaged or crafted file claiming gigabytes would
+    /// otherwise take the app down. A meal plan is a few hundred KB unpacked.
+    static let maxPartSize = 64 * 1024 * 1024
+
     static func entries(in data: Data) throws -> [String: ZipEntry] {
         let bytes = [UInt8](data)
         let count = bytes.count
@@ -174,7 +181,7 @@ private enum ZipArchive {
         let extraLen = Int(u16(bytes, h + 28))
         let start = h + 30 + nameLen + extraLen
         let end = start + entry.compressedSize
-        guard end <= bytes.count else { throw XLSXError.malformed("data range for \(entry.name)") }
+        guard start <= end, end <= bytes.count else { throw XLSXError.malformed("data range for \(entry.name)") }
         let compressed = Array(bytes[start..<end])
 
         switch entry.method {
@@ -182,6 +189,7 @@ private enum ZipArchive {
             return Data(compressed)
         case 8:
             guard entry.uncompressedSize > 0 else { return Data() }
+            guard entry.uncompressedSize <= maxPartSize else { throw XLSXError.tooLarge }
             var dst = [UInt8](repeating: 0, count: entry.uncompressedSize)
             let written = compressed.withUnsafeBufferPointer { src in
                 dst.withUnsafeMutableBufferPointer { dstBuf in
