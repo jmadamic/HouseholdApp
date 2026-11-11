@@ -11,12 +11,31 @@ reads or writes any other household. Exits non-zero if any check is wrong.
 
 There is no local emulator run because that needs Java; this talks to the
 real project with the app's own client key, exactly as the app does.
+
+It also guards against the Nov 2026 outage, when a write loop used the free
+plan's 20,000 daily writes and the server refused every write, so both phones
+stopped syncing:
+  - if the server answers 429 it stops at once and says the quota is gone,
+    instead of reporting every rule as wrong;
+  - it checks that the app's "nothing to publish" account write leaves no
+    entry behind (the app must treat a missing entry as an empty one, or it
+    writes again on every snapshot);
+  - it reads the last 24 hours of write counts and fails if they are far
+    above normal use. That check needs the Firebase CLI to be logged in and
+    is skipped, with a note, if it isn't.
+
+    python3 scripts/test-firestore-rules.py --usage-only   # just the write count
 """
+import datetime
 import json
+import os
 import plistlib
 import secrets
+import subprocess
 import sys
+import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 cfg = plistlib.load(open("HouseholdApp/GoogleService-Info.plist", "rb"))
@@ -41,6 +60,80 @@ def call(url, body=None, token=None, method=None):
         return err.code, None
 
 
+# Normal use is under 100 writes a day. The free plan stops at 20,000.
+WRITE_ALARM = 2000
+
+
+def admin_token():
+    """The Firebase CLI's access token, refreshed by running a CLI command.
+    None if the CLI isn't installed or logged in."""
+    path = os.path.expanduser("~/.config/configstore/firebase-tools.json")
+    for attempt in range(2):
+        try:
+            tokens = json.load(open(path))["tokens"]
+            if tokens.get("expires_at", 0) / 1000 > time.time() + 60:
+                return tokens["access_token"]
+        except (OSError, KeyError, ValueError):
+            pass
+        if attempt == 0:
+            try:
+                subprocess.run(["firebase", "projects:list"], capture_output=True, timeout=60)
+            except (OSError, subprocess.SubprocessError):
+                return None
+    return None
+
+
+def writes_last_24h():
+    """(total, busiest hour count, busiest hour end in local time), or None."""
+    token = admin_token()
+    if not token:
+        return None
+    now = datetime.datetime.now(datetime.timezone.utc)
+    query = urllib.parse.urlencode({
+        "filter": 'metric.type="firestore.googleapis.com/document/write_count"',
+        "interval.startTime": (now - datetime.timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "interval.endTime": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "aggregation.alignmentPeriod": "3600s",
+        "aggregation.perSeriesAligner": "ALIGN_SUM",
+        "aggregation.crossSeriesReducer": "REDUCE_SUM",
+    })
+    req = urllib.request.Request(
+        f"https://monitoring.googleapis.com/v3/projects/{PROJECT}/timeSeries?{query}",
+        headers={"Authorization": "Bearer " + token})
+    try:
+        with urllib.request.urlopen(req) as resp:
+            series = json.loads(resp.read()).get("timeSeries", [])
+    except urllib.error.HTTPError:
+        return None
+    points = [(int(p["value"].get("int64Value", 0)), p["interval"]["endTime"])
+              for ts in series for p in ts["points"]]
+    if not points:
+        return 0, 0, None
+    peak, peak_end = max(points)
+    end = datetime.datetime.strptime(peak_end[:19], "%Y-%m-%dT%H:%M:%S").replace(
+        tzinfo=datetime.timezone.utc).astimezone()
+    return sum(c for c, _ in points), peak, end.strftime("%b %d %H:%M")
+
+
+def check_write_usage():
+    usage = writes_last_24h()
+    if usage is None:
+        print("skip         write usage: Firebase CLI not logged in (run `firebase login`)")
+        return True
+    total, peak, when = usage
+    ok = total < WRITE_ALARM
+    detail = f"{total} writes in the last 24h" + (f", busiest hour {peak} ending {when}" if when else "")
+    print(f"{'ok' if ok else 'WRONG':6} {'':5} write usage: {detail} (alarm at {WRITE_ALARM}, plan limit 20000/day)")
+    if not ok:
+        print("       Something is writing in a loop. Check for a simulator left running the app,")
+        print("       and for code that writes on every snapshot (see CLAUDE.md).")
+    return ok
+
+
+if "--usage-only" in sys.argv:
+    sys.exit(0 if check_write_usage() else 1)
+
+
 def sign_up():
     status, user = call(f"{AUTH}:signUp?key={KEY}", {"returnSecureToken": True})
     assert status == 200, "guest sign-up failed"
@@ -60,6 +153,11 @@ def commit(token, writes):
 
 
 results = []
+quota_exhausted = False
+
+
+class QuotaExhausted(Exception):
+    """The first write came back 429: nothing else can be tested."""
 
 
 def expect(name, got, want):
@@ -105,7 +203,7 @@ def join(token, uid, value, extra=None, mask_extra=()):
 
 try:
     # ── Create (as the app does: household + invite in one batch) ──────────
-    expect("owner creates household + invite", commit(owner_token, [
+    created = commit(owner_token, [
         {"update": {"name": household, "fields": {
             "inviteCode": s(code), "ownerId": s(owner), "name": s("Rules test"),
             "memberIds": {"arrayValue": {"values": [s(owner)]}},
@@ -113,7 +211,11 @@ try:
          "currentDocument": {"exists": False}},
         {"update": {"name": invite(code), "fields": {"householdId": s(hid)}},
          "currentDocument": {"exists": False}},
-    ]), 200)
+    ])
+    if created == 429:
+        quota_exhausted = True
+        raise QuotaExhausted
+    expect("owner creates household + invite", created, 200)
 
     # ── A stranger who knows the code's household ID but not how to join ───
     expect("stranger reads household", call(f"{BASE}/households/{hid}", token=joiner_token)[0], 403)
@@ -138,6 +240,16 @@ try:
     expect("join with right code", join(joiner_token, joiner, code), 200)
     expect("member reads household", call(f"{BASE}/households/{hid}", token=joiner_token)[0], 200)
     expect("member renames household", commit(joiner_token, [update({"name": s("Ours")}, ["name"])]), 200)
+    # What the app sends for a guest account with "I am" unset: nothing to
+    # publish, so both fields are deleted. It must leave no usable entry, and
+    # the app must treat that as "already published" (HouseholdController.
+    # publishMyAccount), or every snapshot triggers another write.
+    expect("guest publishes an empty account entry", commit(joiner_token, [update(
+        {}, [f"accounts.`{joiner}`.email", f"accounts.`{joiner}`.memberIndex"])]), 200)
+    _, doc_now = call(f"{BASE}/households/{hid}", token=joiner_token)
+    entry = (((doc_now or {}).get("fields", {}).get("accounts", {}).get("mapValue", {})
+              .get("fields", {}).get(joiner, {}).get("mapValue", {}).get("fields", {})))
+    expect("…which stores no email or member for that account", entry, {})
     expect("member takes ownership", commit(joiner_token, [update({"ownerId": s(joiner)}, ["ownerId"])]), 403)
     expect("member adds another account", commit(joiner_token, [update({}, [], add_member("intruder"))]), 403)
     expect("member removes someone else", commit(joiner_token, [update({}, [], remove_member(owner))]), 403)
@@ -158,12 +270,15 @@ try:
     expect("ex-member rejoins with the old code", join(joiner_token, joiner, old_code), 403)
     expect("rejoin with the new code", join(joiner_token, joiner, code), 200)
     expect("member leaves again", commit(joiner_token, [update({}, [], remove_member(joiner))]), 200)
+except QuotaExhausted:
+    pass
 finally:
     # ── Clean up everything this run created ───────────────────────────────
-    expect("cleanup: owner deletes invite + household", commit(owner_token, [
-        {"delete": invite(code)}, {"delete": household}]), 200)
-    expect("cleanup: household is gone",
-           call(f"{BASE}/households/{hid}", token=owner_token)[0] in (403, 404), True)
+    if not quota_exhausted:
+        expect("cleanup: owner deletes invite + household", commit(owner_token, [
+            {"delete": invite(code)}, {"delete": household}]), 200)
+        expect("cleanup: household is gone",
+               call(f"{BASE}/households/{hid}", token=owner_token)[0] in (403, 404), True)
     for label, token in (("owner", owner_token), ("joiner", joiner_token)):
         expect(f"cleanup: delete {label} test account",
                call(f"{AUTH}:delete?key={KEY}", {"idToken": token})[0], 200)
@@ -171,5 +286,11 @@ finally:
 failed = [r for r in results if not r[2]]
 for name, got, ok in results:
     print(f"{'ok' if ok else 'WRONG':6} {got!s:5} {name}")
-print(f"\n{len(results) - len(failed)}/{len(results)} checks as expected")
-sys.exit(1 if failed else 0)
+if quota_exhausted:
+    print("\nSTOPPED: the server refused the first write with 429. The project's daily write")
+    print("quota (20,000 on the free plan) is used up, so no phone can save anything until")
+    print("it resets at midnight Pacific. The rules were not tested.")
+usage_ok = check_write_usage()
+if not quota_exhausted:
+    print(f"\n{len(results) - len(failed)}/{len(results)} checks as expected")
+sys.exit(1 if failed or quota_exhausted or not usage_ok else 0)

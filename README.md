@@ -252,7 +252,7 @@ Categories: `name`, `colorHex`, `iconName`, `sortOrder`. Completion logs: `chore
 - Household creation requires you to be the sole member and owner.
 - Joining requires presenting the household's **current** invite code (`joinCodes.<your uid>`), adding only yourself and removing nobody. Knowing a household's document ID isn't enough, and an old code stops working once it's changed.
 - Members can't change the owner, add other accounts, or remove anyone but themselves.
-- `python3 scripts/test-firestore-rules.py` checks all of this against the deployed rules (28 checks; it creates and deletes its own household and guest accounts). Run it after every rules deploy.
+- `python3 scripts/test-firestore-rules.py` checks all of this against the deployed rules (30 checks; it creates and deletes its own household and guest accounts). Run it after every rules deploy. It also stops with a clear message if the daily write quota is used up, and fails if the last 24 hours of writes are far above normal (`--usage-only` runs just that check).
 - Invite codes can only be created by the household owner (same-batch creation) or an existing member (rotation), and only for the household's own current code — prevents invite forgery and spare codes.
 - Invites allow `get` by exact code only — `list` is denied, so codes can't be enumerated by querying the collection.
 - Every subcollection (`chores`, `categories`, `completions`, `shoppingItems`, `meals`, `savedMeals`, `trips`, `packingItems`, `gardenPlants`, `wishes`) is member-only.
