@@ -181,6 +181,7 @@ Each person uses their own device and their own (anonymous or Google) Firebase a
 - All data lives under a single Firestore document tree: `/households/{householdId}` with subcollections `chores`, `categories`, `completions`, `shoppingItems`, `meals`, `savedMeals`, `trips`, `packingItems`, `gardenPlants`, and `wishes`.
 - The household doc holds `memberIds` (Firebase Auth UIDs). Security rules only allow reads/writes when `request.auth.uid` is in that array.
 - Invite codes live at `/invites/{code} → householdId`. Only household members can create or rotate codes. Joining adds your UID to `memberIds` and records the code you presented under `joinCodes.<uid>`, which the rules check against the household's current code.
+- The Firebase project is on the free plan (20,000 writes a day). If that runs out, the server refuses writes until midnight Pacific; phones keep new edits locally and send them once writes are accepted again.
 - On launch the app looks up the household your account already belongs to before creating one, so signing out and back in, or reinstalling, returns you to the same household.
 - Each store (`ChoreStore`, `ShoppingStore`, `MealStore`, `CategoryStore`) keeps a snapshot listener open, so remote edits appear immediately; Firestore's local cache keeps the app working offline.
 - Signing in with Google links the anonymous account, preserving the same UID (and therefore household membership) across reinstalls.
