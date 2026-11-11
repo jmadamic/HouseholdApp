@@ -23,6 +23,14 @@ final class HouseholdController: ObservableObject {
     /// Stops two callers from each finding-or-creating a household at once.
     private var isResolvingHousehold = false
 
+    private struct PublishedAccount: Equatable {
+        let householdId: String
+        let uid: String
+        let account: HouseholdAccount
+    }
+    /// The last account entry this phone sent; see `publishMyAccount`.
+    private var lastPublished: PublishedAccount?
+
     private var db: Firestore { Firestore.firestore() }
 
     var currentHouseholdId: String? {
@@ -275,11 +283,24 @@ final class HouseholdController: ObservableObject {
 
     /// Writes this phone's own entry in `accounts` (email + "I am" member)
     /// if it differs from what's stored. Only ever touches the caller's UID.
+    ///
+    /// This runs on every household snapshot, so it must never write when
+    /// nothing would change. A guest account with "I am" unset has nothing to
+    /// publish (no email, no index): the write is two field deletes that
+    /// leave no entry behind, so "no entry" must count as equal to "empty",
+    /// or every snapshot triggers another write. That loop used the whole
+    /// daily write quota in an hour and blocked every phone (Nov 2026).
+    /// `lastPublished` is a second stop: the same value for the same
+    /// household is never sent twice in a row, whatever the snapshot says.
     func publishMyAccount(memberIndex: Int?) {
         guard let id = currentHouseholdId, let household,
               let user = Auth.auth().currentUser else { return }
         let mine = HouseholdAccount(email: user.email, memberIndex: memberIndex)
-        guard household.accounts?[user.uid] != mine else { return }
+        let stored = household.accounts?[user.uid] ?? HouseholdAccount(email: nil, memberIndex: nil)
+        guard stored != mine else { return }
+        let attempt = PublishedAccount(householdId: id, uid: user.uid, account: mine)
+        guard attempt != lastPublished else { return }
+        lastPublished = attempt
         let key = "accounts.\(user.uid)"
         db.collection("households").document(id).updateData([
             "\(key).email":       user.email.map { $0 as Any } ?? FieldValue.delete(),
