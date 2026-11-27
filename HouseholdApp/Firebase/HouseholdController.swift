@@ -251,6 +251,10 @@ final class HouseholdController: ObservableObject {
         let subcollections = ["chores", "categories", "completions",
                               "shoppingItems", "meals", "trips", "packingItems", "savedMeals", "gardenPlants", "wishes"]
 
+        // Photos go one batch each, because the rules make every photo delete
+        // also step the project-wide photo counter down (see PhotoStore).
+        try await PhotoStore.deleteAll(householdId: id)
+
         // Delete all subcollection documents first (Firestore doesn't cascade).
         for sub in subcollections {
             let docs = try await householdRef.collection(sub).getDocuments()

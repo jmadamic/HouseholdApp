@@ -19,10 +19,12 @@ struct MealListView: View {
 
     private func delete(_ meal: MealDoc) {
         let hid = householdId
-        mealStore.delete(meal, householdId: hid)
-        undoCenter.show("Deleted \"\(meal.displayName)\"") { [mealStore] in
+        mealStore.delete(meal, householdId: hid, keepPhotos: true)
+        undoCenter.show("Deleted \"\(meal.displayName)\"", undo: { [mealStore] in
             mealStore.save(meal, householdId: hid)
-        }
+        }, expire: {
+            PhotoStore.delete(ids: meal.photoIds ?? [], householdId: hid)
+        })
     }
 
     private var filteredMeals: [MealDoc] {

@@ -49,9 +49,12 @@ final class ShoppingStore: ObservableObject {
         catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
     }
 
-    func delete(_ item: ShoppingItemDoc, householdId: String) {
+    /// Also deletes its photos, unless `keepPhotos` (an Undo is on offer;
+    /// the caller deletes them when it expires).
+    func delete(_ item: ShoppingItemDoc, householdId: String, keepPhotos: Bool = false) {
         db.collection("households").document(householdId)
             .collection("shoppingItems").document(item.id).delete()
+        if !keepPhotos { PhotoStore.delete(ids: item.photoIds ?? [], householdId: householdId) }
     }
 
     func markPurchased(_ item: ShoppingItemDoc, householdId: String) {

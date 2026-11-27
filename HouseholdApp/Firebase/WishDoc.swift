@@ -88,6 +88,9 @@ struct WishNote: Codable, Identifiable, Hashable {
 
 struct WishDoc: Codable, Identifiable {
     var id: String
+    /// Photo IDs at /households/{id}/photos (see PhotoStore). Optional +
+    /// defaulted so older documents and builds are unaffected.
+    var photoIds: [String]? = nil
     var name: String                  // e.g. "New bed"
     var status: String                // raw WishStatus
     var notes: [WishNote]

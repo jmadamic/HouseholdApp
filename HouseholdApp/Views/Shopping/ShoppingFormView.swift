@@ -35,6 +35,8 @@ struct ShoppingFormView: View {
     @State private var needByDate   = Calendar.current.startOfDay(for: .now)
     @State private var hasNeedByTime = false
 
+    @StateObject private var photos = PhotoDraft()
+
     private var isValid: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty }
     private var householdId: String { householdCtrl.household?.id ?? "" }
 
@@ -139,6 +141,8 @@ struct ShoppingFormView: View {
                     }
                 }
 
+                PhotoSection(draft: photos, footer: "Handy for the exact brand or size.")
+
                 Section("Notes (optional)") {
                     TextEditor(text: $notes).frame(minHeight: 60)
                 }
@@ -148,7 +152,7 @@ struct ShoppingFormView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }.disabled(!isValid).fontWeight(.semibold)
+                    Button("Save") { save() }.disabled(!isValid || photos.isUploading).fontWeight(.semibold)
                 }
             }
             .onAppear(perform: populate)
@@ -189,6 +193,7 @@ struct ShoppingFormView: View {
     }
 
     private func populate() {
+        photos.start(ids: item?.photoIds, householdId: householdId)
         guard let i = item else { return }
         name = i.name; quantity = i.quantity ?? ""; store = i.store ?? ""
         itemType = i.itemType ?? ""; selectedMembers = Set(i.assignedToMembers); notes = i.notes ?? ""
@@ -217,6 +222,7 @@ struct ShoppingFormView: View {
             ? (hasNeedByTime ? needByDate : Calendar.current.startOfDay(for: needByDate))
             : nil
         target.hasNeedByTime    = hasNeedBy && hasNeedByTime
+        target.photoIds         = photos.commit()
         shoppingStore.save(target, householdId: householdId)
         dismiss()
     }

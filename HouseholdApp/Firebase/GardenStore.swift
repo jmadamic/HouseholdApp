@@ -51,9 +51,12 @@ final class GardenStore: ObservableObject {
         catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
     }
 
-    func delete(_ plant: GardenPlantDoc, householdId: String) {
+    /// Also deletes its photos, unless `keepPhotos` (an Undo is on offer;
+    /// the caller deletes them when it expires).
+    func delete(_ plant: GardenPlantDoc, householdId: String, keepPhotos: Bool = false) {
         db.collection("households").document(householdId)
             .collection("gardenPlants").document(plant.id).delete()
+        if !keepPhotos { PhotoStore.delete(ids: plant.photoIds ?? [], householdId: householdId) }
     }
 
     /// Marks the plant's NEXT pending harvest as collected.

@@ -50,6 +50,7 @@ struct ShoppingRowView: View {
                             .padding(.horizontal, 6).padding(.vertical, 2)
                             .background(.blue.opacity(0.12), in: Capsule())
                     }
+                    PhotoBadge(ids: item.photoIds)
                 }
                 HStack(spacing: 6) {
                     if let t = item.itemType, !t.isEmpty {
@@ -107,6 +108,7 @@ struct ShoppingRowView: View {
     private var accessibilitySummary: String {
         var parts = [item.nameSafe]
         if let qty = item.quantitySafe { parts.append("quantity \(qty)") }
+        if item.photoIds?.isEmpty == false { parts.append("has photos") }
         parts.append(item.isPurchased ? "purchased" : "not purchased")
         if let store = item.store, !store.isEmpty { parts.append("at \(store)") }
         if let needBy = item.needByLabel, !item.isPurchased {

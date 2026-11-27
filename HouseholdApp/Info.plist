@@ -52,6 +52,8 @@
     </array>
 
     <!-- Voice capture: dictate a chore/item instead of typing it -->
+    <key>NSCameraUsageDescription</key>
+    <string>Lets you take photos of meals, plants, shopping items and things you're looking for.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Lets you add chores and shopping items by speaking instead of typing.</string>
     <key>NSSpeechRecognitionUsageDescription</key>

@@ -51,6 +51,9 @@ struct MealIngredient: Codable, Identifiable, Hashable {
 
 struct MealDoc: Codable, Identifiable {
     var id: String
+    /// Photo IDs at /households/{id}/photos (see PhotoStore). Optional +
+    /// defaulted so older documents and builds are unaffected.
+    var photoIds: [String]? = nil
     /// Optional dish name, e.g. "Spaghetti Bolognese". Falls back to meal type.
     var name: String?
     /// The calendar day the meal is planned for (time component ignored).

@@ -14,10 +14,13 @@ struct MealRowView: View {
         HStack(alignment: .center, spacing: 12) {
             typeAvatar
             VStack(alignment: .leading, spacing: 4) {
-                Text(meal.displayName)
-                    .font(.body)
-                    .strikethrough(meal.isPast, color: .secondary)
-                    .foregroundStyle(meal.isPast ? .secondary : .primary)
+                HStack(spacing: 6) {
+                    Text(meal.displayName)
+                        .font(.body)
+                        .strikethrough(meal.isPast, color: .secondary)
+                        .foregroundStyle(meal.isPast ? .secondary : .primary)
+                    PhotoBadge(ids: meal.photoIds)
+                }
                 HStack(spacing: 6) {
                     mealTypeBadge
                     if !meal.ingredients.isEmpty { ingredientsBadge }
@@ -86,6 +89,7 @@ struct MealRowView: View {
         var parts = ["\(meal.mealTypeEnum.label): \(meal.displayName)"]
         parts.append(meal.dayLabel)
         if meal.isPast { parts.append("done") }
+        if meal.photoIds?.isEmpty == false { parts.append("has photos") }
         if !meal.ingredients.isEmpty && !meal.isPast {
             let missing = meal.missingIngredients.count
             parts.append(missing == 0

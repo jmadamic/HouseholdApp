@@ -67,19 +67,25 @@ final class UndoCenter: ObservableObject {
         let id = UUID()
         let message: String
         let undo: () -> Void
+        /// Runs once Undo is no longer possible (timed out, or replaced by the
+        /// next delete), never after Undo. Deleting a parent's photos waits
+        /// for this so Undo can bring them back.
+        let expire: (() -> Void)?
     }
 
     @Published private(set) var pending: Pending? = nil
     private var dismissTask: Task<Void, Never>? = nil
 
-    func show(_ message: String, undo: @escaping () -> Void) {
-        let next = Pending(message: message, undo: undo)
+    func show(_ message: String, undo: @escaping () -> Void, expire: (() -> Void)? = nil) {
+        pending?.expire?()
+        let next = Pending(message: message, undo: undo, expire: expire)
         withAnimation(.snappy) { pending = next }
         UIAccessibility.post(notification: .announcement, argument: "\(message). Undo available.")
         dismissTask?.cancel()
         dismissTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(5))
             guard !Task.isCancelled, self?.pending?.id == next.id else { return }
+            next.expire?()
             withAnimation(.snappy) { self?.pending = nil }
         }
     }

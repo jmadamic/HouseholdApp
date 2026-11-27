@@ -23,6 +23,7 @@ struct WishDetailView: View {
     @State private var newCriterionMustHave = true
     @State private var newLink        = ""
     @State private var shoppingPrefill: ShoppingItemDoc? = nil
+    @StateObject private var photos = PhotoDraft()
 
     private var householdId: String { householdCtrl.household?.id ?? "" }
 
@@ -139,7 +140,18 @@ struct WishDetailView: View {
             } footer: {
                 Text("Product pages, reviews, listings. Links added with a note appear alongside that note.")
             }
+
+            // ── Photos (saved as soon as they're added or deleted) ─────────────
+            PhotoSection(draft: photos, footer: "Options you're comparing, or the one you picked.")
         }
+        .onAppear {
+            photos.start(ids: current.photoIds, householdId: householdId) { [wishStore] ids in
+                guard var updated = wishStore.wishes.first(where: { $0.id == wish.id }) else { return }
+                updated.photoIds = ids.isEmpty ? nil : ids
+                wishStore.save(updated, householdId: householdId)
+            }
+        }
+        .onChange(of: current.photoIds) { _, ids in photos.follow(ids) }
         .listStyle(.insetGrouped)
         .listSectionSpacing(.compact)
         .navigationTitle(current.nameSafe)
