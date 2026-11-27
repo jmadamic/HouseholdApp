@@ -21,10 +21,12 @@ struct GardenView: View {
 
     private func delete(_ plant: GardenPlantDoc) {
         let hid = householdId
-        gardenStore.delete(plant, householdId: hid)
-        undoCenter.show("Deleted \"\(plant.nameSafe)\"") { [gardenStore] in
+        gardenStore.delete(plant, householdId: hid, keepPhotos: true)
+        undoCenter.show("Deleted \"\(plant.nameSafe)\"", undo: { [gardenStore] in
             gardenStore.save(plant, householdId: hid)
-        }
+        }, expire: {
+            PhotoStore.delete(ids: plant.photoIds ?? [], householdId: hid)
+        })
     }
 
     private var growing:   [GardenPlantDoc] { gardenStore.plants.filter { !$0.isFullyHarvested } }
@@ -162,9 +164,12 @@ struct GardenView: View {
                 .frame(width: 36, height: 36)
                 .background((done ? Color.brown : Color.green).opacity(0.1), in: Circle())
             VStack(alignment: .leading, spacing: 4) {
-                Text(plant.nameSafe)
-                    .strikethrough(done, color: .secondary)
-                    .foregroundStyle(done ? .secondary : .primary)
+                HStack(spacing: 6) {
+                    Text(plant.nameSafe)
+                        .strikethrough(done, color: .secondary)
+                        .foregroundStyle(done ? .secondary : .primary)
+                    PhotoBadge(ids: plant.photoIds)
+                }
                 HStack(spacing: 6) {
                     readyBadge(plant)
                     if remaining > 1 && !done {
@@ -180,7 +185,7 @@ struct GardenView: View {
         }
         .opacity(done ? 0.6 : 1.0)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(plant.nameSafe), \(plant.readyLabel)\(remaining > 1 && !done ? ", \(remaining - 1) more harvests coming" : "")")
+        .accessibilityLabel("\(plant.nameSafe), \(plant.readyLabel)\(remaining > 1 && !done ? ", \(remaining - 1) more harvests coming" : "")\(plant.photoIds?.isEmpty == false ? ", has photos" : "")")
     }
 
     private func readyBadge(_ plant: GardenPlantDoc) -> some View {

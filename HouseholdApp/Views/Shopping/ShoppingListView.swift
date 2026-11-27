@@ -169,10 +169,12 @@ struct ShoppingListView: View {
 
     private func delete(_ item: ShoppingItemDoc) {
         let hid = householdId
-        shoppingStore.delete(item, householdId: hid)
-        undoCenter.show("Deleted \"\(item.nameSafe)\"") { [shoppingStore] in
+        shoppingStore.delete(item, householdId: hid, keepPhotos: true)
+        undoCenter.show("Deleted \"\(item.nameSafe)\"", undo: { [shoppingStore] in
             shoppingStore.save(item, householdId: hid)
-        }
+        }, expire: {
+            PhotoStore.delete(ids: item.photoIds ?? [], householdId: hid)
+        })
     }
 
     @ViewBuilder

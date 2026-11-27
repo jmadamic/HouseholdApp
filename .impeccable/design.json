@@ -336,6 +336,14 @@
       "description": "Five tabs visible in a system-material bar, swipeable and snapping to whole tabs, with tint chevrons at either end when more tabs lie that way. Selected tab is tint, others secondary.",
       "html": "<nav class=\"ds-bar\"><span class=\"ds-tab ds-tab-on\">Chores</span><span class=\"ds-tab\">Shopping</span><span class=\"ds-tab\">Meals</span><span class=\"ds-tab\">Garden</span><span class=\"ds-tab\">Packing</span><span class=\"ds-chev\">&#x203A;</span></nav>",
       "css": ".ds-bar{display:flex;align-items:center;height:50px;padding-left:28px;background:rgba(249,249,249,.94);border-top:1px solid rgba(60,60,67,.29);font:400 11px -apple-system,system-ui}.ds-tab{flex:1;text-align:center;color:rgba(60,60,67,.6)}.ds-tab-on{color:#45A86D}.ds-chev{width:28px;text-align:center;color:#45A86D;font-size:20px;font-weight:600}"
+    },
+    {
+      "name": "Photo Strip",
+      "kind": "media",
+      "refersTo": "icon-tile",
+      "description": "72 pt square thumbnails, 8 pt corners, then an add tile: tint plus on a 12% accent wash. Tap opens a full-screen pager.",
+      "html": "<div class=\"ds-photos\" role=\"group\" aria-label=\"Photos\"><button class=\"ds-photo\" aria-label=\"Photo 1 of 1\"></button><button class=\"ds-photo-add\" aria-label=\"Add photo\">+</button></div>",
+      "css": ".ds-photos{display:flex;gap:8px;padding:4px 0}.ds-photo{width:72px;height:72px;border-radius:8px;border:0;background:linear-gradient(135deg,#7FB77E,#3E7D4F);cursor:pointer}.ds-photo-add{width:72px;height:72px;border-radius:8px;border:0;background:rgba(69,168,109,.12);color:#45A86D;font:400 22px -apple-system, system-ui, sans-serif;cursor:pointer}.ds-photo:focus-visible,.ds-photo-add:focus-visible{outline:2px solid #45A86D;outline-offset:2px}"
     }
   ],
   "narrative": {

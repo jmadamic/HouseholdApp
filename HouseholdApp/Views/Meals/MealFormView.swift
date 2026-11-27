@@ -30,6 +30,8 @@ struct MealFormView: View {
     @State private var instructions    = ""
     @State private var savedToLibrary  = false
 
+    @StateObject private var photos = PhotoDraft()
+
     private var householdId: String { householdCtrl.household?.id ?? "" }
 
     /// Ingredients marked "need to buy" that aren't on the shopping list yet —
@@ -123,6 +125,8 @@ struct MealFormView: View {
                     Text("Paste a link to an online recipe and/or write the steps here. Both are included when you share the meal.")
                 }
 
+                PhotoSection(draft: photos, footer: "The finished dish, or a photo of a recipe card.")
+
                 Section("Notes (optional)") {
                     TextEditor(text: $notes).frame(minHeight: 60)
                 }
@@ -147,7 +151,7 @@ struct MealFormView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { saveTapped() }.fontWeight(.semibold)
+                    Button("Save") { saveTapped() }.disabled(photos.isUploading).fontWeight(.semibold)
                 }
             }
             .onAppear(perform: populate)
@@ -265,6 +269,7 @@ struct MealFormView: View {
     // ── Populate / save ────────────────────────────────────────────────────────
 
     private func populate() {
+        photos.start(ids: meal?.photoIds, householdId: householdId)
         if let m = meal {
             mealId          = m.id
             name            = m.name ?? ""
@@ -355,6 +360,7 @@ struct MealFormView: View {
         target.tripId            = tripId
         target.recipeURL         = recipeURL.isEmpty ? nil : recipeURL
         target.instructions      = instructions.isEmpty ? nil : instructions
+        target.photoIds          = photos.commit()
         mealStore.save(target, householdId: householdId)
         if tripId != nil { syncIngredientsToPackingList(for: target) }
         dismiss()

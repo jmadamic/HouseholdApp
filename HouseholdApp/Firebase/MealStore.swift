@@ -56,9 +56,12 @@ final class MealStore: ObservableObject {
         catch { errorMessage = "Couldn't save: \(error.localizedDescription)" }
     }
 
-    func delete(_ meal: MealDoc, householdId: String) {
+    /// Also deletes its photos, unless `keepPhotos` (an Undo is on offer;
+    /// the caller deletes them when it expires).
+    func delete(_ meal: MealDoc, householdId: String, keepPhotos: Bool = false) {
         db.collection("households").document(householdId)
             .collection("meals").document(meal.id).delete()
+        if !keepPhotos { PhotoStore.delete(ids: meal.photoIds ?? [], householdId: householdId) }
     }
 
     func setArchived(_ meal: MealDoc, _ archived: Bool, householdId: String) {

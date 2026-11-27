@@ -6,6 +6,9 @@ import Foundation
 
 struct ShoppingItemDoc: Codable, Identifiable {
     var id: String
+    /// Photo IDs at /households/{id}/photos (see PhotoStore). Optional +
+    /// defaulted so older documents and builds are unaffected.
+    var photoIds: [String]? = nil
     var name: String
     var quantity: String?
     var store: String?

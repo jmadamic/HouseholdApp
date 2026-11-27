@@ -32,6 +32,7 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 | **Undo deletes** | Deleting a chore, item, meal, plant, packing item, or wish happens straight away with a "Deleted · Undo" banner for 5 seconds — no confirmation pop-ups. Trips (which take their packing list with them) and bulk clears still ask first |
 | **Filter by person** | Chores, Shopping and Meals have a filter button in the top bar ("All" or a member's name). Pick a person to see their items plus Everyone's; the button shows who you're filtered to |
 | **Who's on it, at a glance** | Every row shows the assigned person's initial in their colour ("J", "S", or "Jo"/"Je" if two names share a letter), or a two-person icon for Everyone — readable without telling colours apart |
+| **Photos** | Add up to 6 photos to a meal (the dish or a recipe card), a shopping item (the exact brand), a plant, or a Looking For item: take one or pick from your library, tap to view full screen, delete from there. A small photo icon on the row shows which items have them. Photos are shrunk to about 1600 px and 300 KB and their location data is removed. Deleting an item deletes its photos once Undo is no longer offered. Adding needs a connection |
 | **Safe member removal** | Removing a household member asks first and re-maps everyone's assignments, so items never slide onto the wrong person; anything only assigned to the removed member becomes Everyone's |
 
 ---
@@ -40,7 +41,7 @@ Data lives in **Cloud Firestore** and syncs in real time between everyone in the
 
 - **Xcode 16+** (free from the Mac App Store)
 - **iOS 17+** on the target device(s)
-- A **Firebase project** (free Spark plan is enough — this app uses only Firestore + Auth)
+- A **Firebase project** (free Spark plan is enough — this app uses only Firestore + Auth; photos are stored in Firestore, not Cloud Storage)
 - An **Apple ID** for code signing — a free personal team works, but apps expire after 7 days and must be re-installed every few days (automated by `scripts/refresh-sideload.sh`). A paid Apple Developer membership removes the weekly expiry.
 
 ---
@@ -78,7 +79,8 @@ HouseholdApp/
     │   ├── TripDoc.swift + TripStore.swift              ← Trips/events for packing; activeTrips / archivedTrips
     │   ├── PackingItemDoc.swift + PackingStore.swift
     │   ├── GardenPlantDoc.swift + GardenStore.swift     ← Plants, harvests, always-ready herbs, done-for-season
-    │   └── WishDoc.swift + WishStore.swift              ← "Looking For" research items
+    │   ├── WishDoc.swift + WishStore.swift              ← "Looking For" research items
+    │   └── PhotoStore.swift            ← Photos stored in Firestore: compress, upload, delete, disk cache, free-plan cap
     │
     ├── Models/
     │   ├── Enums.swift                 ← DueDateType, RepeatInterval, ChoreSection
@@ -91,6 +93,7 @@ HouseholdApp/
     │   ├── VoiceIntentParser.swift     ← Turns a transcript into a draft chore / shopping item
     │   ├── Color+Hex.swift             ← Color ↔ "#RRGGBB" hex string conversion
     │   ├── IconView.swift              ← Shared icon + label components, assignee avatars, person filter menu
+    │   ├── PhotoViews.swift            ← Photo section for forms, thumbnails, full-screen viewer, camera, row badge
     │   └── NotificationManager.swift   ← Local reminders for every dated thing, rebuilt in one pass (UNUserNotificationCenter)
     │
     └── Views/
@@ -178,10 +181,11 @@ Each person uses their own device and their own (anonymous or Google) Firebase a
 
 ### How it works under the hood
 
-- All data lives under a single Firestore document tree: `/households/{householdId}` with subcollections `chores`, `categories`, `completions`, `shoppingItems`, `meals`, `savedMeals`, `trips`, `packingItems`, `gardenPlants`, and `wishes`.
+- All data lives under a single Firestore document tree: `/households/{householdId}` with subcollections `chores`, `categories`, `completions`, `shoppingItems`, `meals`, `savedMeals`, `trips`, `packingItems`, `gardenPlants`, `wishes`, and `photos`.
 - The household doc holds `memberIds` (Firebase Auth UIDs). Security rules only allow reads/writes when `request.auth.uid` is in that array.
 - Invite codes live at `/invites/{code} → householdId`. Only household members can create or rotate codes. Joining adds your UID to `memberIds` and records the code you presented under `joinCodes.<uid>`, which the rules check against the household's current code.
 - The Firebase project is on the free plan (20,000 writes a day). If that runs out, the server refuses writes until midnight Pacific; phones keep new edits locally and send them once writes are accepted again.
+- Photos are stored in Firestore too (`/households/{id}/photos`), because Cloud Storage needs the paid plan. The security rules cap them at 400 KB each and 2,000 across the whole project (800 MB, under the free plan's 1 GiB), enforced on the server through a counter at `/meta/photoUsage`, so photos can't use up the free plan.
 - On launch the app looks up the household your account already belongs to before creating one, so signing out and back in, or reinstalling, returns you to the same household.
 - Each store (`ChoreStore`, `ShoppingStore`, `MealStore`, `CategoryStore`) keeps a snapshot listener open, so remote edits appear immediately; Firestore's local cache keeps the app working offline.
 - Signing in with Google links the anonymous account, preserving the same UID (and therefore household membership) across reinstalls.
@@ -226,6 +230,7 @@ All documents are Codable Swift structs in `HouseholdApp/Firebase/`.
 | `assignedToMembers` | [Int] | Member indices; empty = Everyone |
 | `isPurchased` / `purchasedAt` | Bool / Date? | Purchase state (auto-cleaned after 1 month) |
 | `mealId` / `mealName` | String? | Set when the item was added from a meal's ingredient list — powers the badge that links back to the meal |
+| `photoIds` | [String]? | Photo document IDs (also on meals, plants and wishes) |
 
 ### MealDoc — `…/meals/{id}`
 
@@ -237,6 +242,15 @@ All documents are Codable Swift structs in `HouseholdApp/Firebase/`.
 | `assignedToMembers` | [Int] | Who's cooking; empty = Everyone |
 | `ingredients` | [MealIngredient] | Each has `name`, `have` (on hand?), `addedToList` |
 | `isCompleted` / `completedAt` | Bool / Date? | Whether the meal was made |
+
+### Photos — `…/photos/{id}` and `/meta/photoUsage`
+
+| Field | Type | Description |
+|---|---|---|
+| `jpeg` | Bytes | The photo, at most 400 KB (enforced by the rules). Never changed after upload |
+| `createdAt` | Timestamp | Server time of upload |
+
+`/meta/photoUsage` holds `count` (photos across the whole project), `lastHousehold` and `lastPhoto`. Every photo add or delete must change `count` by exactly one in the same batch and name that photo; the rules refuse a `count` over 2,000.
 
 ### CategoryDoc / CompletionLogDoc
 
@@ -252,10 +266,11 @@ Categories: `name`, `colorHex`, `iconName`, `sortOrder`. Completion logs: `chore
 - Household creation requires you to be the sole member and owner.
 - Joining requires presenting the household's **current** invite code (`joinCodes.<your uid>`), adding only yourself and removing nobody. Knowing a household's document ID isn't enough, and an old code stops working once it's changed.
 - Members can't change the owner, add other accounts, or remove anyone but themselves.
-- `python3 scripts/test-firestore-rules.py` checks all of this against the deployed rules (30 checks; it creates and deletes its own household and guest accounts). Run it after every rules deploy. It also stops with a clear message if the daily write quota is used up, and fails if the last 24 hours of writes are far above normal (`--usage-only` runs just that check).
+- Photos: members only, at most 400 KB, never edited, and each add or delete must move the project-wide counter at `/meta/photoUsage` by exactly one in the same batch. The counter can't go above 2,000 or move without a matching photo.
+- `python3 scripts/test-firestore-rules.py` checks all of this against the deployed rules (44 checks, including photo limits and the 2,000 cap; it creates and deletes its own household and guest accounts). Run it after every rules deploy. It also stops with a clear message if the daily write quota is used up, and fails if the last 24 hours of writes are far above normal (`--usage-only` runs just that check).
 - Invite codes can only be created by the household owner (same-batch creation) or an existing member (rotation), and only for the household's own current code — prevents invite forgery and spare codes.
 - Invites allow `get` by exact code only — `list` is denied, so codes can't be enumerated by querying the collection.
-- Every subcollection (`chores`, `categories`, `completions`, `shoppingItems`, `meals`, `savedMeals`, `trips`, `packingItems`, `gardenPlants`, `wishes`) is member-only.
+- Every subcollection (`chores`, `categories`, `completions`, `shoppingItems`, `meals`, `savedMeals`, `trips`, `packingItems`, `gardenPlants`, `wishes`, `photos`) is member-only.
 
 ---
 
@@ -298,7 +313,7 @@ The source of truth is `project.yml` — never edit `project.pbxproj` by hand.
 | UI | SwiftUI — every swipe-to-delete list stays mounted when empty, with its empty state as an overlay (swapping the `List` out mid-delete crashes UIKit) |
 | Backend | Firebase — Cloud Firestore (real-time sync + offline cache), Firebase Auth (anonymous + Google) |
 | Notifications | Local only (`UNUserNotificationCenter`) |
-| Version | 2.2 — `MARKETING_VERSION` in `project.yml` (shown in Settings → About) |
+| Version | 2.3 — `MARKETING_VERSION` in `project.yml` (shown in Settings → About) |
 | Settings storage | UserDefaults via `@AppStorage` (device-local prefs) |
 | Minimum OS | iOS 17 |
 | Language | Swift 5.9 |

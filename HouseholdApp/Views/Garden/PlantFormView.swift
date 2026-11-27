@@ -21,6 +21,8 @@ struct PlantFormView: View {
     @State private var plantedAt         = Calendar.current.startOfDay(for: .now)
     @State private var notes             = ""
 
+    @StateObject private var photos = PhotoDraft()
+
     private var isValid: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty && (alwaysReady || !harvests.isEmpty)
     }
@@ -74,6 +76,8 @@ struct PlantFormView: View {
                     }
                 }
 
+                PhotoSection(draft: photos)
+
                 Section("Notes (optional)") {
                     TextEditor(text: $notes).frame(minHeight: 60)
                 }
@@ -102,7 +106,7 @@ struct PlantFormView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }.disabled(!isValid).fontWeight(.semibold)
+                    Button("Save") { save() }.disabled(!isValid || photos.isUploading).fontWeight(.semibold)
                 }
             }
             .onAppear(perform: populate)
@@ -139,6 +143,7 @@ struct PlantFormView: View {
     }
 
     private func populate() {
+        photos.start(ids: plant?.photoIds, householdId: householdId)
         guard let p = plant else { return }
         name        = p.name
         quantity    = p.quantity ?? ""
@@ -171,6 +176,7 @@ struct PlantFormView: View {
             return normalized
         }
         // save() syncs the legacy single-harvest fields for older builds.
+        target.photoIds      = photos.commit()
         gardenStore.save(target, householdId: householdId)
         dismiss()
     }

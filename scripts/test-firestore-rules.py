@@ -9,6 +9,12 @@ Self-contained: it signs up two throwaway guest accounts, creates its own
 household, attacks it, then deletes the household and both accounts. It never
 reads or writes any other household. Exits non-zero if any check is wrong.
 
+Photos: it adds and deletes one photo of its own, so the project-wide photo
+counter at /meta/photoUsage ends where it started. To test the 2,000 cap it
+raises that counter to the cap with the Firebase CLI's admin login, tries to
+add a photo, and lowers it again; both are increments, so a phone adding or
+deleting a photo at the same moment is still counted correctly.
+
 There is no local emulator run because that needs Java; this talks to the
 real project with the app's own client key, exactly as the app does.
 
@@ -201,6 +207,50 @@ def join(token, uid, value, extra=None, mask_extra=()):
     return commit(token, [update(fields, [f"joinCodes.`{uid}`", *mask_extra], add_member(uid))])
 
 
+# ── Photos: each add/delete must move /meta/photoUsage by exactly one ──────
+USAGE = f"{ROOT}/meta/photoUsage"
+PHOTO_CAP = 2000      # firestore.rules and PhotoStore.projectCap
+photos_left = set()   # created by this run and not yet deleted
+
+
+def photo(p):
+    return f"{ROOT}/households/{hid}/photos/{p}"
+
+
+def new_photo_id():
+    return secrets.token_hex(8).upper()
+
+
+def photo_create(p, size=2000):
+    import base64
+    return {"update": {"name": photo(p), "fields": {
+        "jpeg": {"bytesValue": base64.b64encode(b"\xff" * size).decode()},
+        "createdAt": {"timestampValue": "2026-01-01T00:00:00Z"}}},
+        "currentDocument": {"exists": False}}
+
+
+def usage_move(p, delta):
+    """What the app sends with each photo write (PhotoStore)."""
+    return {"update": {"name": USAGE, "fields": {"lastHousehold": s(hid), "lastPhoto": s(p)}},
+            "updateMask": {"fieldPaths": ["lastHousehold", "lastPhoto"]},
+            "updateTransforms": [{"fieldPath": "count", "increment": {"integerValue": str(delta)}}]}
+
+
+def add_photo(token, p, size=2000, delta=1):
+    status = commit(token, [photo_create(p, size), usage_move(p, delta)])
+    if status == 200:
+        photos_left.add(p)
+    return status
+
+
+def delete_photo(token, p, delta=-1):
+    writes = [{"delete": photo(p)}] + ([usage_move(p, delta)] if delta else [])
+    status = commit(token, writes)
+    if status == 200:
+        photos_left.discard(p)
+    return status
+
+
 try:
     # ── Create (as the app does: household + invite in one batch) ──────────
     created = commit(owner_token, [
@@ -235,6 +285,7 @@ try:
                [f"joinCodes.`{joiner}`", "memberIds"])]), 403)
     expect("stranger mints an invite for the household", commit(joiner_token, [
         {"update": {"name": invite(new_code()), "fields": {"householdId": s(hid)}}}]), 403)
+    expect("stranger adds a photo to the household", add_photo(joiner_token, new_photo_id()), 403)
 
     # ── The real join, then what a member may and may not do ───────────────
     expect("join with right code", join(joiner_token, joiner, code), 200)
@@ -256,6 +307,48 @@ try:
     expect("member mints a second invite", commit(joiner_token, [
         {"update": {"name": invite(new_code()), "fields": {"householdId": s(hid)}}}]), 403)
 
+    # ── Photos and the project-wide photo counter ──────────────────────────
+    pic = new_photo_id()
+    expect("member adds a photo, counting it", add_photo(joiner_token, pic), 200)
+    expect("member reads the photo", call(f"{BASE}/households/{hid}/photos/{pic}", token=joiner_token)[0], 200)
+    expect("member adds a photo without counting it",
+           commit(joiner_token, [photo_create(new_photo_id())]), 403)
+    expect("member adds a photo over 400 KB", add_photo(joiner_token, new_photo_id(), size=450_000), 403)
+    expect("member counts a photo as two", add_photo(joiner_token, new_photo_id(), delta=2), 403)
+    a, b = new_photo_id(), new_photo_id()
+    expect("member adds two photos, counting one",
+           commit(joiner_token, [photo_create(a), photo_create(b), usage_move(b, 1)]), 403)
+    expect("member lowers the counter without deleting a photo",
+           commit(joiner_token, [usage_move(pic, -1)]), 403)
+    expect("member resets the counter", commit(joiner_token, [
+        {"update": {"name": USAGE, "fields": {"count": {"integerValue": "0"},
+                                              "lastHousehold": s(hid), "lastPhoto": s(pic)}}}]), 403)
+    expect("member edits a photo", commit(joiner_token, [
+        {"update": {"name": photo(pic), "fields": {"createdAt": {"timestampValue": "2026-02-01T00:00:00Z"}}},
+         "updateMask": {"fieldPaths": ["createdAt"]}}]), 403)
+    expect("member deletes a photo without uncounting it", delete_photo(joiner_token, pic, delta=0), 403)
+    expect("member deletes the photo, uncounting it", delete_photo(joiner_token, pic), 200)
+    # The cap: with the Firebase CLI's admin login (which bypasses the rules),
+    # raise the counter to 2,000, try to add, then lower it again. Increments,
+    # not a set, so a phone adding or deleting a photo meanwhile isn't lost.
+    admin = admin_token()
+    if admin:
+        status, doc = call(f"{BASE}/meta/photoUsage", token=admin)
+        current = int(doc["fields"]["count"].get("integerValue", 0)) if status == 200 else 0
+        gap = PHOTO_CAP - current
+
+        def bump(n):
+            return commit(admin, [{"transform": {"document": USAGE, "fieldTransforms": [
+                {"fieldPath": "count", "increment": {"integerValue": str(n)}}]}}])
+        if bump(gap) == 200:
+            try:
+                expect(f"member adds a photo when the project has {PHOTO_CAP}",
+                       add_photo(joiner_token, new_photo_id()), 403)
+            finally:
+                expect("cap check: counter restored", bump(-gap), 200)
+    else:
+        print("skip         photo cap: Firebase CLI not logged in (run `firebase login`)")
+
     # ── Leave, change the code, and the old code must stop working ─────────
     expect("member leaves", commit(joiner_token, [update({}, [], remove_member(joiner))]), 200)
     old_code, code = code, new_code()
@@ -275,6 +368,8 @@ except QuotaExhausted:
 finally:
     # ── Clean up everything this run created ───────────────────────────────
     if not quota_exhausted:
+        for p in list(photos_left):   # only if a delete check above failed
+            expect(f"cleanup: owner deletes leftover photo {p}", delete_photo(owner_token, p), 200)
         expect("cleanup: owner deletes invite + household", commit(owner_token, [
             {"delete": invite(code)}, {"delete": household}]), 200)
         expect("cleanup: household is gone",

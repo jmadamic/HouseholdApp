@@ -99,6 +99,60 @@ service cloud.firestore {
       match /wishes/{wishId} {
         allow read, write: if isMember(householdId);
       }
+
+      // Photos are stored in the database itself (Cloud Storage needs the
+      // paid plan). They're immutable JPEGs of at most 400 KB, and every add
+      // or delete must move the project-wide counter at /meta/photoUsage by
+      // exactly one, naming this photo, in the same batch. The counter's own
+      // rules cap it, so photos can never fill the free plan's 1 GiB.
+      match /photos/{photoId} {
+        allow read: if isMember(householdId);
+        allow create: if isMember(householdId) &&
+                         request.resource.data.keys().hasOnly(['jpeg', 'createdAt']) &&
+                         request.resource.data.jpeg is bytes &&
+                         request.resource.data.jpeg.size() <= 400000 &&
+                         usageMovesFor(householdId, photoId, 1);
+        allow delete: if isMember(householdId) &&
+                         usageMovesFor(householdId, photoId, -1);
+        allow update: if false;
+      }
+    }
+
+    // ── meta/photoUsage ────────────────────────────────────────────────────
+    // { count, lastHousehold, lastPhoto }: how many photos exist across the
+    // whole project, and which one the latest change was. It can only go up
+    // by one when that photo is created in the same batch, down by one when
+    // it's deleted, and never above 2,000. 2,000 × 400 KB = 800 MB, under the
+    // free plan's 1 GiB with room for everything else.
+    function usagePath() {
+      return /databases/$(database)/documents/meta/photoUsage;
+    }
+    function photoPath(h, p) {
+      return /databases/$(database)/documents/households/$(h)/photos/$(p);
+    }
+    function usageCountBefore() {
+      return exists(usagePath()) ? get(usagePath()).data.count : 0;
+    }
+    function usageMovesFor(h, p, delta) {
+      let after = getAfter(usagePath()).data;
+      return after.lastHousehold == h && after.lastPhoto == p &&
+             after.count == usageCountBefore() + delta;
+    }
+
+    match /meta/photoUsage {
+      allow get: if request.auth != null;
+      allow list, delete: if false;
+      allow create, update: if request.auth != null &&
+        request.resource.data.keys().hasOnly(['count', 'lastHousehold', 'lastPhoto']) &&
+        request.resource.data.lastHousehold.matches('[A-Za-z0-9_-]+') &&
+        request.resource.data.lastPhoto.matches('[A-Za-z0-9_-]+') &&
+        ((request.resource.data.count == usageCountBefore() + 1 &&
+          request.resource.data.count <= 2000 &&
+          !exists(photoPath(request.resource.data.lastHousehold, request.resource.data.lastPhoto)) &&
+          existsAfter(photoPath(request.resource.data.lastHousehold, request.resource.data.lastPhoto))) ||
+         (request.resource.data.count == usageCountBefore() - 1 &&
+          exists(photoPath(request.resource.data.lastHousehold, request.resource.data.lastPhoto)) &&
+          !existsAfter(photoPath(request.resource.data.lastHousehold, request.resource.data.lastPhoto))));
     }
 
     // ── invites/{code} ─────────────────────────────────────────────────────

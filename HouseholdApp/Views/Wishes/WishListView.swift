@@ -16,10 +16,12 @@ struct WishListView: View {
 
     private func delete(_ wish: WishDoc) {
         let hid = householdId
-        wishStore.delete(wish, householdId: hid)
-        undoCenter.show("Deleted \"\(wish.nameSafe)\"") { [wishStore] in
+        wishStore.delete(wish, householdId: hid, keepPhotos: true)
+        undoCenter.show("Deleted \"\(wish.nameSafe)\"", undo: { [wishStore] in
             wishStore.save(wish, householdId: hid)
-        }
+        }, expire: {
+            PhotoStore.delete(ids: wish.photoIds ?? [], householdId: hid)
+        })
     }
 
     private var active: [WishDoc] { wishStore.wishes.filter { $0.statusEnum != .got } }
@@ -101,10 +103,13 @@ struct WishListView: View {
                             in: Circle())
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(wish.nameSafe)
-                    .font(.body)
-                    .strikethrough(done, color: .secondary)
-                    .foregroundStyle(done ? .secondary : .primary)
+                HStack(spacing: 6) {
+                    Text(wish.nameSafe)
+                        .font(.body)
+                        .strikethrough(done, color: .secondary)
+                        .foregroundStyle(done ? .secondary : .primary)
+                    PhotoBadge(ids: wish.photoIds)
+                }
                 HStack(spacing: 6) {
                     if !done {
                         Text(wish.statusEnum.label)
@@ -128,6 +133,6 @@ struct WishListView: View {
         }
         .opacity(done ? 0.6 : 1.0)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(wish.nameSafe), \(wish.statusEnum.label). \(wish.summaryLabel)")
+        .accessibilityLabel("\(wish.nameSafe), \(wish.statusEnum.label). \(wish.summaryLabel)\(wish.photoIds?.isEmpty == false ? ", has photos" : "")")
     }
 }

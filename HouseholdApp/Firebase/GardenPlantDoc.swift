@@ -45,6 +45,9 @@ struct PlantHarvest: Codable, Identifiable, Hashable {
 
 struct GardenPlantDoc: Codable, Identifiable {
     var id: String
+    /// Photo IDs at /households/{id}/photos (see PhotoStore). Optional +
+    /// defaulted so older documents and builds are unaffected.
+    var photoIds: [String]? = nil
     var name: String              // e.g. "Zucchini"
     var quantity: String?         // e.g. "3 plants", "1 row"
     /// Legacy single-harvest fields — still written (mirrored from the

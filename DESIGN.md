@@ -201,6 +201,9 @@ A toolbar dropdown (`MemberFilterMenu`) at the trailing edge, before Add: the fi
 ### Quantity Badge
 On shopping rows, after the name: the quantity in Caption 2 semibold blue on a 12% blue capsule, like every other row badge. (It was solid blue with white text until Nov 2026, the one Twelve Percent Rule breach.)
 
+### Photo Strip
+A "Photos" form section (meals, shopping items, plants; and live on the Looking For detail screen). Empty: one "Add Photo" row with a camera glyph in tint. With photos: a horizontal row of 72 pt square thumbnails, 8 pt corners, 8 pt apart, then a 72 pt add tile (tint `+` on a 12% accent wash, same corners); uploads show as a spinner tile on `secondarySystemFill`. Add opens a menu: Take Photo, Choose from Library. A thumbnail opens a full-screen black pager with Done and a trash button (confirmed). On rows, a Caption 2 secondary `photo` glyph sits after the name when an item has photos. Errors show as one Caption red line under the strip.
+
 ### Icon Picker Tiles
 40×40 pt tiles, 8 pt corners, six per row. Unselected: accent glyph on a 12% accent wash. Selected: white glyph on solid accent. The one place solid color with white is allowed.
 
